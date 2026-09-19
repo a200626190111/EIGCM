@@ -1,0 +1,51 @@
+# Converted by radmat2mirror from south_blinds_metal_minus30.rad
+# Smoothness selection threshold: 0.001
+
+# South-window blinds based on the original blind dimensions.
+# Slat width and centre spacing: 0.075 m; zero thickness.
+# Tilt = -30 degrees viewed from the room: the room-side edge is lower.
+
+
+void metal west_blind_metal_appearance
+0
+0
+5 0.70 0.70 0.70 0.30 0.00
+
+# 复制 Radiance metal 的菲涅尔近似
+void brightfunc west_blind_fresnel
+2 A1+(1-A1)*(exp(-5.85*Rdot)-0.00202943064) .
+0
+1 0.21
+
+# 外层 mirror 负责生成虚拟太阳
+west_blind_fresnel mirror south_blind_metal
+1 west_blind_metal_appearance
+0
+3 1.00 1.00 1.00
+
+
+#void metal south_blind_metal
+#0
+#0
+#5 0.70 0.70 0.70 0.30 0.00
+
+!xform -n south_slat_01 -t 0 0 0.000 south_blind_slats_base_minus30.rad
+!xform -n south_slat_02 -t 0 0 0.075 south_blind_slats_base_minus30.rad
+!xform -n south_slat_03 -t 0 0 0.150 south_blind_slats_base_minus30.rad
+!xform -n south_slat_04 -t 0 0 0.225 south_blind_slats_base_minus30.rad
+!xform -n south_slat_05 -t 0 0 0.300 south_blind_slats_base_minus30.rad
+!xform -n south_slat_06 -t 0 0 0.375 south_blind_slats_base_minus30.rad
+!xform -n south_slat_07 -t 0 0 0.450 south_blind_slats_base_minus30.rad
+!xform -n south_slat_08 -t 0 0 0.525 south_blind_slats_base_minus30.rad
+!xform -n south_slat_09 -t 0 0 0.600 south_blind_slats_base_minus30.rad
+!xform -n south_slat_10 -t 0 0 0.675 south_blind_slats_base_minus30.rad
+!xform -n south_slat_11 -t 0 0 0.750 south_blind_slats_base_minus30.rad
+!xform -n south_slat_12 -t 0 0 0.825 south_blind_slats_base_minus30.rad
+!xform -n south_slat_13 -t 0 0 0.900 south_blind_slats_base_minus30.rad
+!xform -n south_slat_14 -t 0 0 0.975 south_blind_slats_base_minus30.rad
+!xform -n south_slat_15 -t 0 0 1.050 south_blind_slats_base_minus30.rad
+!xform -n south_slat_16 -t 0 0 1.125 south_blind_slats_base_minus30.rad
+!xform -n south_slat_17 -t 0 0 1.200 south_blind_slats_base_minus30.rad
+!xform -n south_slat_18 -t 0 0 1.275 south_blind_slats_base_minus30.rad
+!xform -n south_slat_19 -t 0 0 1.350 south_blind_slats_base_minus30.rad
+!xform -n south_slat_20 -t 0 0 1.425 south_blind_slats_base_minus30.rad

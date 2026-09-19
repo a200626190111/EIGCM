@@ -1,0 +1,26 @@
+# Autodesk Ecotect Analysis 2011 to RADIANCE Exporter
+
+# Scene file.
+scene=  shade2_sky.rad shade2.rad
+
+# Model extents.
+ZONE = Interior -7.000 0.000 -4.000 1.000 0.000 3.000
+
+# Associated files.
+AMBFILE= shade2.amb
+OCTREE= shade2.oct
+
+# Misc. Paramaters.
+RESOLUTION= 640 480
+DETAIL= MEDIUM
+VARIABILITY= MEDIUM
+QUALITY= MEDIUM
+INDIRECT= 2
+REPORT= 2
+
+render= 
+
+# View definition(s).
+view= c1  -vtv -vp -14.436 -5.257 6.882 -vd 10.936 3.757 -5.382 -vu 0 0 1 -vh 25.600 -vv 19.200 -vs 0 -vl 0
+
+

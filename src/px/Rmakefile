@@ -1,0 +1,227 @@
+# RCSid: $Id: Rmakefile,v 2.76 2025/06/30 16:25:48 greg Exp $
+#
+# Compiles for image processing and display programs
+#
+
+ARCH = sun
+OPT = -O
+MACH = -DBSD
+SPECIAL = 
+CFLAGS = -I../common -L../lib $(OPT) $(MACH)
+CC = cc
+MLIB = -lm
+
+INSTALL = cp
+
+INSTDIR = /usr/local/bin
+
+LIBDIR = /usr/local/lib/ray
+
+PROGS = pfilt ttyimage psign ra_tiff normtiff \
+pvalue pcompos protate ra_hexbit ra_bmp \
+ra_t8 ra_t16 pcomb pinterp pflip ra_ppm \
+ra_rgbe ra_pict ra_ps pextrem ra_gif ra_xyze macbethcal pcond \
+pcwarp pmblur2 psketch
+
+all:	$(PROGS) $(SPECIAL)
+
+ogl:
+
+sun:
+
+install:	$(PROGS) $(SPECIAL) normpat.csh falsecolor.pl \
+pdfblur.csh pmblur.csh pmdblur.csh xyzimage.csh pgblur.csh ra_pfm.csh
+	$(INSTALL) $(PROGS) $(INSTDIR)
+	cp normpat.csh $(INSTDIR)/normpat
+	cp falsecolor.pl $(INSTDIR)/falsecolor
+	cp pdfblur.csh $(INSTDIR)/pdfblur
+	cp pmblur.csh $(INSTDIR)/pmblur
+	cp pmdblur.csh $(INSTDIR)/pmdblur
+	cp xyzimage.csh $(INSTDIR)/xyzimage
+	cp phisto.pl $(INSTDIR)/phisto
+	cp pdelta.csh $(INSTDIR)/pdelta
+	cp pgblur.csh $(INSTDIR)/pgblur
+	cp ra_pfm.csh $(INSTDIR)/ra_pfm
+	cp ran2tiff.csh $(INSTDIR)/ran2tiff
+	cd $(INSTDIR) ; chmod 755 normpat falsecolor pdfblur pmblur \
+	pmdblur xyzimage phisto pdelta pgblur ra_pfm ran2tiff
+
+clean:
+	rm -f $(PROGS) $(SPECIAL) *.o x11findwind.c
+	cd tiff; make distclean
+
+pfilt:	pfilt.o pf2.o pf3.o
+	$(CC) $(CFLAGS) -o pfilt pfilt.o pf2.o pf3.o -lrtrad $(MLIB)
+
+pcond:	pcond.o pcond2.o pcond3.o pcond4.o warp3d.o
+	$(CC) $(CFLAGS) -o pcond pcond.o pcond2.o pcond3.o pcond4.o warp3d.o \
+-lrtrad $(MLIB)
+
+pcwarp:	pcwarp.o warp3d.o
+	$(CC) $(CFLAGS) -o pcwarp pcwarp.o warp3d.o -lrtrad $(MLIB)
+
+ttyimage:	ttyimage.o
+	$(CC) $(CFLAGS) -o ttyimage ttyimage.o -lrtrad $(MLIB)
+
+pvalue:	pvalue.o
+	$(CC) $(CFLAGS) -o pvalue pvalue.o -lrtrad $(MLIB)
+
+pcompos:	pcompos.o
+	$(CC) $(CFLAGS) -o pcompos pcompos.o -lrtrad $(MLIB)
+
+psign:	psign.o
+	$(CC) $(CFLAGS) -o psign psign.o -lrtrad $(MLIB)
+
+ra_gif:	ra_gif.o clrtab.o neuclrtab.o
+	$(CC) $(CFLAGS) -o ra_gif ra_gif.o clrtab.o neuclrtab.o -lrtrad $(MLIB)
+
+ra_ps:	ra_ps.o
+	$(CC) $(CFLAGS) -o ra_ps ra_ps.o -lrtrad $(MLIB)
+
+ra_ppm:		ra_ppm.o
+	$(CC) $(CFLAGS) -o ra_ppm ra_ppm.o -lrtrad $(MLIB)
+
+ra_bmp:		ra_bmp.o
+	$(CC) $(CFLAGS) -o ra_bmp ra_bmp.o -lrtrad $(MLIB)
+
+ra_t8:	ra_t8.o clrtab.o neuclrtab.o
+	$(CC) $(CFLAGS) -o ra_t8 ra_t8.o clrtab.o neuclrtab.o -lrtrad $(MLIB)
+
+ra_t16: ra_t16.o
+	$(CC) $(CFLAGS) -o ra_t16 ra_t16.o -lrtrad $(MLIB)
+
+ra_rgbe:	ra_rgbe.o
+	$(CC) $(CFLAGS) -o ra_rgbe ra_rgbe.o -lrtrad $(MLIB)
+
+ra_pict:    ra_pict.o
+	$(CC) $(CFLAGS) -o ra_pict ra_pict.o -lrtrad $(MLIB)
+
+ra_hexbit:	ra_hexbit.o
+	$(CC) $(CFLAGS) -o ra_hexbit ra_hexbit.o -lrtrad $(MLIB)
+
+ximage:	x11image.o x11raster.o clrtab.o
+	$(CC) $(CFLAGS) -o ximage x11image.o x11raster.o \
+clrtab.o -lrtrad -lX11 $(MLIB)
+
+protate:		protate.o
+	$(CC) $(CFLAGS) -o protate protate.o -lrtrad $(MLIB)
+
+pextrem:	pextrem.o
+	$(CC) $(CFLAGS) -o pextrem pextrem.o -lrtrad $(MLIB)
+
+pflip:		pflip.o
+	$(CC) $(CFLAGS) -o pflip pflip.o -lrtrad $(MLIB)
+
+pcomb:	pcomb.o
+	$(CC) $(CFLAGS) -o pcomb pcomb.o -lrtrad $(MLIB)
+
+pinterp:	pinterp.o
+	$(CC) $(CFLAGS) -o pinterp pinterp.o -lrtrad $(MLIB)
+
+pmblur2:	pmblur2.o
+	$(CC) $(CFLAGS) -o pmblur2 pmblur2.o -lrtrad $(MLIB)
+
+ra_xyze:	ra_xyze.o
+	$(CC) $(CFLAGS) -o ra_xyze ra_xyze.o -lrtrad $(MLIB)
+
+psketch:	psketch.o
+	$(CC) $(CFLAGS) -o psketch psketch.o -lrtrad $(MLIB)
+
+ra_tiff:	ra_tiff.o ../lib/libtiff.a
+	$(CC) $(CFLAGS) -o ra_tiff ra_tiff.o -lrtrad -ltiff $(MLIB)
+
+../common/tiff.h ../common/tiffio.h:	../lib/libtiff.a
+	@chmod u+w ../common/tiff.h ../common/tiffio.h
+	@touch ../common/tiff.h ../common/tiffio.h
+
+normtiff:	normtiff.o ../lib/libtiff.a
+	$(CC) $(CFLAGS) -o normtiff normtiff.o -lrtrad -ltiff $(MLIB)
+
+../lib/libtiff.a:
+	cd tiff ; ./configure -C -quiet -with-CC=$(CC) \
+		"--libdir=`pwd`/../../lib" "--includedir=`pwd`/../../common" \
+		--enable-static --disable-shared --disable-cxx \
+		--enable-logluv --disable-jpeg \
+		--disable-zlib --disable-pixarlog \
+		"-with-ENVOPTS=$(OPT)" ; \
+	cd port ; make all ; \
+	cd ../libtiff ; make install
+
+xshowtrace:	xshowtrace.o x11findwind.o
+	$(CC) $(CFLAGS) -o xshowtrace xshowtrace.o \
+x11findwind.o -lrtrad -lX11 $(MLIB)
+
+macbethcal:	macbethcal.o pmapgen.o mx3.o warp3d.o
+	$(CC) $(CFLAGS) -o macbethcal macbethcal.o pmapgen.o mx3.o warp3d.o \
+-lrtrad $(MLIB)
+
+
+macbethcal.o:	pmap.h ../common/color.h ../common/resolu.h
+
+macbethcal.o pcond2.o pcwarp.o warp3d.o:	warp3d.h ../common/lookup.h
+
+pmapgen.o:	mx3.h pmap.h
+
+nclrtab.o:	neuclrtab.o
+	ln neuclrtab.c nclrtab.c
+	$(CC) $(CFLAGS) -DCOMPAT_MODE -c nclrtab.c
+	rm -f nclrtab.c
+
+pcomb.o:	../common/calcomp.h
+
+pf2.o ra_ps.o ra_t16.o:	../common/random.h
+
+neuclrtab.o clrtab.o pfilt.o pf2.o pf3.o ttyimage.o \
+psign.o protate.o ra_hexbit.o pextrem.o pcompos.o \
+pflip.o ra_t8.o ra_t16.o ra_tiff.o ra_pict.o pmblur2.o \
+ra_ps.o pvalue.o pcomb.o pinterp.o:	../common/color.h
+
+neuclrtab.o pvalue.o protate.o pinterp.o psign.o pmblur2.o psketch.o \
+xshowtrace.o clrtab.o pcomb.o pfilt.o pf3.o image.o:	../common/standard.h \
+../common/rtmisc.h ../common/rtio.h \
+../common/rtmath.h ../common/mat4.h ../common/fvect.h \
+../common/rterror.h
+
+x11image.o x11raster.o:	x11raster.h
+
+x11image.o:	../common/tonemap.h ../common/color.h
+
+ra_t8.o:	../common/targa.h
+
+ra_tiff.o normtiff.o:	../common/tiff.h ../common/tiffio.h
+
+ra_t8.o:	pic.h
+
+pcomb.o pfilt.o pinterp.o x11image.o x11showtrace.o \
+image.o:	../common/view.h ../common/resolu.h
+
+ra_pict.o:	pict.h
+
+pcompos.o pfilt.o pflip.o \
+pinterp.o protate.o pvalue.o ra_pict.o ra_hexbit.o \
+ra_ppm.o ra_rgbe.o ra_t16.o ra_t8.o \
+ra_tiff.o ttyimage.o:	../common/resolu.h
+
+psketch.o:	../common/resolu.h ../common/color.h
+
+psketch.o pfilt.o:	../common/paths.h
+
+psign.o:	../common/font.h
+
+pcond.o pcond2.o pcond3.o pcond4.o:	pcond.h ../common/standard.h \
+../common/rtmisc.h ../common/rtio.h \
+../common/rtmath.h ../common/mat4.h ../common/fvect.h \
+../common/rterror.h ../common/color.h ../common/view.h ../common/resolu.h
+
+normtiff.o:	../common/color.h ../common/tonemap.h ../common/resolu.h
+
+ra_bmp.o:	../common/bmpfile.h ../common/color.h \
+../common/tonemap.h ../common/resolu.h
+
+x11findwind.c:	../common/x11findwind.c
+	cp ../common/x11findwind.c .
+
+macbethcal.o normtiff.o pcomb.o pcompos.o pcond.o pextrem.o pfilt.o \
+pflip.o psign.o pvalue.o ra_bmp.o ra_gif.o ra_pict.o ra_ppm.o ra_ps.o \
+ra_rgbe.o ra_skel.o ra_t16.o ra_t8.o ra_tiff.o ra_xyze.o pmblur2.o \
+psketch.o ttyimage.o:	../common/platform.h

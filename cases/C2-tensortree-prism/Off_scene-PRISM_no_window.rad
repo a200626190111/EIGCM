@@ -1,0 +1,16 @@
+!xform objects/Layer0.rad
+
+!xform objects/wall.rad
+
+!xform objects/roof.rad
+
+!xform objects/floor.rad
+
+!xform objects/computer.rad
+
+!xform objects/lamps.rad
+
+!xform objects/cambinet.rad
+
+# Window polygons are intentionally omitted. The window BSDF is applied by
+# the explicit Reinhart transmission matrices in glare_prism_tmatrix.sh.

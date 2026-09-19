@@ -1,0 +1,135 @@
+# RCSid: $Id: Rmakefile,v 1.17 2021/04/07 17:03:13 greg Exp $
+#
+#  Compiles:
+#
+
+OPT = -O
+MACH =
+CC = cc
+AR = ar
+MLIB = -lm
+CFLAGS = -DMDIR=\"$(MLIBDIR)/\" $(OPT) $(MACH) -I../common -L../lib
+
+LIBDIR = /usr/local/lib
+MLIBDIR = $(LIBDIR)/meta
+DESTDIR = .
+INSTDIR = /usr/local/bin
+
+# target lists
+common = mfio.o syscalls.o misc.o
+
+PROGS = $(DESTDIR)/meta2tga $(DESTDIR)/pexpand $(DESTDIR)/psort \
+	$(DESTDIR)/cv $(DESTDIR)/psmeta $(DESTDIR)/plotin \
+	$(DESTDIR)/x11meta $(DESTDIR)/bgraph $(DESTDIR)/igraph \
+	$(DESTDIR)/dgraph $(DESTDIR)/gcomp $(DESTDIR)/plot4 \
+	$(DESTDIR)/meta2bmp
+
+LIBS = symbols.met vchars.met boxw.plt curve.plt line.plt scatter.plt \
+	cartesian.plt function.plt polar.plt standard.plt
+
+# global targets
+all: $(PROGS)
+
+install: $(PROGS) $(LIBS)
+	cp $(PROGS) $(INSTDIR)
+	cp -f $(LIBS) $(MLIBDIR)
+	./cv symbols.met > $(MLIBDIR)/symbols.mta
+	./cv vchars.met > $(MLIBDIR)/vchars.mta
+
+clean:
+	set nonomatch; rm -f *.o $(PROGS)
+
+# individual targets
+
+$(DESTDIR)/meta2tga:	meta2tga.o rplot.o plot.o palloc.o
+	$(CC) $(CFLAGS) -o meta2tga meta2tga.o rplot.o plot.o $(common) \
+palloc.o -lrtrad
+
+$(DESTDIR)/meta2bmp:	meta2bmp.o rplot.o plot.o palloc.o
+	$(CC) $(CFLAGS) -o meta2bmp meta2bmp.o rplot.o plot.o $(common) \
+palloc.o -lrtrad
+
+$(DESTDIR)/x11meta:	xmeta.o x11plot.o plot.o palloc.o
+	$(CC) $(CFLAGS) -o x11meta xmeta.o x11plot.o plot.o palloc.o \
+$(common) -lrtrad -lX11
+
+$(DESTDIR)/psmeta:	psmeta.o psplot.o
+	$(CC) $(CFLAGS) -o psmeta psmeta.o psplot.o $(common) -lrtrad
+
+$(DESTDIR)/plotin:	plotin.o primout.o
+	$(CC) $(CFLAGS) -o plotin plotin.o primout.o $(common) -lrtrad $(MLIB)
+
+$(DESTDIR)/pexpand:	pexpand.o expand.o segment.o palloc.o
+	$(CC) $(CFLAGS) -o pexpand pexpand.o expand.o segment.o \
+$(common) palloc.o -lrtrad
+
+$(DESTDIR)/psort:	psort.o sort.o palloc.o
+	$(CC) $(CFLAGS) -o psort psort.o sort.o $(common) palloc.o -lrtrad
+
+$(DESTDIR)/cv:		cv.o mfio.o cvhfio.o syscalls.o misc.o
+	$(CC) $(CFLAGS) -o cv cv.o mfio.o cvhfio.o syscalls.o misc.o \
+-lrtrad
+
+$(DESTDIR)/plot4:	plot4.o primout.o
+	$(CC) $(CFLAGS) -o plot4 plot4.o primout.o $(common) -lrtrad
+
+$(DESTDIR)/tcurve:	tcurve.o tgraph.o primout.o
+	$(CC) $(CFLAGS) -o tcurve tcurve.o tgraph.o primout.o \
+$(common) $(MLIB)
+
+$(DESTDIR)/tscat:	tscat.o tgraph.o primout.o
+	$(CC) $(CFLAGS) -o tscat tscat.o tgraph.o primout.o \
+$(common) -lrtrad $(MLIB)
+
+$(DESTDIR)/tbar:	tbar.o tgraph.o primout.o
+	$(CC) $(CFLAGS) -o tbar tbar.o tgraph.o primout.o $(common) -lrtrad $(MLIB)
+
+$(DESTDIR)/mtext:	mtext.o primout.o
+	$(CC) $(CFLAGS) -o mtext mtext.o primout.o $(common) -lrtrad
+
+../lib/libmeta.a:	metacalls.o primout.o progname.o
+	$(AR) rc ../lib/libmeta.a metacalls.o primout.o \
+$(common) progname.o
+	-ranlib ../lib/libmeta.a
+
+../lib/lib4014.a:
+	cd lib4014; make INSTDIR=../../lib "CFLAGS=$(OPT)" install clean
+
+$(DESTDIR)/bgraph:	bgraph.o mgvars.o mgraph.o ../lib/libmeta.a
+	$(CC) $(CFLAGS) -o bgraph bgraph.o mgvars.o mgraph.o \
+-lmeta -lrtrad $(MLIB)
+
+$(DESTDIR)/igraph:	igraph.o mgvars.o mgraph.o ../lib/libmeta.a \
+gcalc.o cgraph.o
+	$(CC) $(CFLAGS) -o igraph igraph.o mgvars.o mgraph.o \
+cgraph.o gcalc.o -lmeta -lrtrad $(MLIB)
+
+$(DESTDIR)/dgraph:	dgraph.o cgraph.o mgvars.o
+	$(CC) $(CFLAGS) -o dgraph dgraph.o cgraph.o mgvars.o \
+-lrtrad $(MLIB)
+
+$(DESTDIR)/gcomp:	gcomp.o gcalc.o mgvars.o
+	$(CC) $(CFLAGS) -o gcomp gcomp.o gcalc.o mgvars.o \
+-lrtrad $(MLIB)
+
+# dependencies
+$(DESTDIR)/meta2tga $(DESTDIR)/meta2bmp $(DESTDIR)/x11meta \
+$(DESTDIR)/pexpand $(DESTDIR)/plot4 $(DESTDIR)/psort $(DESTDIR)/mtext \
+$(DESTDIR)/plotin ../lib/libmeta.a psmeta:	$(common)
+
+cvhfio.o:	cvhfio.c hfio.c
+
+mgvars.o igraph.o mgraph.o cgraph.o gcalc.o:	mgvars.h
+
+mgraph.o:	mgraph.h
+
+misc.o syscalls.o mfio.o hfio.o cvhfio.o palloc.o segment.o sort.o expand.o \
+plot.o mplot.o primout.o psort.o pexpand.o cv.o mtext.o plot4.o \
+xmeta.o metacalls.o meta2tga.o \
+meta2bmp.o rplot.o:	meta.h ../common/rterror.h
+
+plot.o mplot.o meta2tga.o meta2bmp.o rplot.o:	plot.h
+
+mplot.o:	span.h
+
+rplot.o meta2bmp.o meta2tga.o:	rast.h

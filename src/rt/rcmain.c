@@ -1,0 +1,552 @@
+#ifndef lint
+static const char	RCSid[] = "$Id$";
+#endif
+/*
+ *  rcmain.c - main for rtcontrib ray contribution tracer
+ */
+
+#include "copyright.h"
+
+#include <signal.h>
+#include <time.h>
+#include "rcontrib.h"
+#include "random.h"
+#include "source.h"
+#include "ambient.h"
+#include "pmapray.h"
+#include "pmapcontrib.h"
+
+int	gargc;				/* global argc */
+char	**gargv;			/* global argv */
+char	*octname;			/* global octree name */
+
+char	*sigerr[NSIG];			/* signal error messages */
+
+int	nproc = 1;			/* number of processes requested */
+int	nchild = 0;			/* number of children (-1 in child) */
+
+int	rc_worker = 0;			/* internal worker mode? */
+int	rc_worker_id = -1;		/* internal worker identifier */
+
+int	inpfmt = 'a';			/* input format */
+int	outfmt = 'a';			/* output format */
+
+int	header = 1;			/* output header? */
+int	force_open = 0;			/* truncate existing output? */
+int	recover = 0;			/* recover previous output? */
+int	accumulate = 1;			/* input rays per output record */
+int	contrib = 0;			/* computing contributions? */
+
+int	xres = 0;			/* horizontal (scan) size */
+int	yres = 0;			/* vertical resolution */
+
+int	using_stdout = 0;		/* are we using stdout? */
+
+int	imm_irrad = 0;			/* compute immediate irradiance? */
+int	lim_dist = 0;			/* limit distance? */
+
+int	report_intvl = 0;		/* reporting interval (seconds) */
+
+char	**modname = NULL;		/* ordered modifier name list */
+int	nmods = 0;			/* number of modifiers */
+int	modasiz = 0;			/* allocated modifier array size */
+
+void	(*addobjnotify[])() = {ambnotify, NULL};
+
+char	RCCONTEXT[] = "RC.";		/* our special evaluation context */
+
+#define RCONTRIB_FEATURES	"Multiprocessing\n" \
+				"Accumulation\nSummation\nRecovery\n" \
+				"ImmediateIrradiance\n" \
+				"ProgressReporting\nDistanceLimiting\n" \
+				"InputFormats=a,f,d\nOutputFormats=a,f,d,c\n" \
+				"Outputs=V,W\n" \
+				"OutputCS=RGB,spec\n"
+
+static void
+printdefaults(void)			/* print default values to stdout */
+{
+	int	i, first = 1;
+
+	printf("-c %-5d\t\t\t# accumulated rays per record\n", accumulate);
+	printf("-V%c\t\t\t\t# output %s\n", contrib ? '+' : '-',
+			contrib ? "contributions" : "coefficients");
+	printf("--direct-specular-only %s\t# suppress direct diffuse terms\n",
+			direct_specular_only ? "on" : "off");
+	printf("--adaptive-accumulate %s\t# initial,min,zero-min,stable,rms,peak,floor\n",
+			rc_adaptive_accumulate ? "on" : "off");
+	printf("--path-output %s\t\t# optical path output mode\n",
+			rc_path_output_name());
+	printf("--path-components %s\t# fused path-component output\n",
+			rc_dual_path_output ? "total,direct" : "off");
+	printf("--source-components %s\t# fused physical-source output\n",
+			rc_dual_source_output ? "total,physical" : "off");
+	printf("--path-direct-max-reflections %d\t# direct component limit\n",
+			rc_path_direct_max_reflections);
+	printf("--path-direct-max-ambient %d\t# direct ambient-event limit\n",
+			rc_path_direct_max_ambient);
+	printf("--path-direct-straight-only %s\t# straight-through direct paths only\n",
+			rc_path_direct_straight_only ? "on" : "off");
+	printf("--path-mirror-orders ");
+	for (i = 1; i < 8*(int)sizeof(rc_path_mirror_orders); i++)
+		if (rc_path_mirror_orders & (1u << i)) {
+			if (!first) putchar(',');
+			printf("%d", i);
+			first = 0;
+		}
+	printf("\t# explicitly replaced mirror orders\n");
+	if (imm_irrad)
+		printf("-I+\t\t\t\t# immediate irradiance on\n");
+	printf("-n %-2d\t\t\t\t# number of rendering processes\n", nproc);
+	printf("-x %-9d\t\t\t# %s\n", xres,
+			yres && xres ? "x resolution" : "flush interval");
+	printf("-y %-9d\t\t\t# y resolution\n", yres);
+	printf(lim_dist ? "-ld+\t\t\t\t# limit distance on\n" :
+			"-ld-\t\t\t\t# limit distance off\n");
+	printf(header ? "-h+\t\t\t\t# output header\n" :
+			"-h-\t\t\t\t# no header\n");
+	printf("-f%c%c\t\t\t\t# format input/output = %s/%s\n",
+			inpfmt, outfmt, formstr(inpfmt), formstr(outfmt));
+	if (report_intvl > 0)
+		printf("-t %-9d\t\t\t#  time between reports\n", report_intvl);
+	printf(erract[WARNING].pf != NULL ?
+			"-w+\t\t\t\t# warning messages on\n" :
+			"-w-\t\t\t\t# warning messages off\n");
+	print_rdefaults();
+}
+
+
+/* Parse adaptive accumulation settings. */
+static int
+set_adaptive_accumulate(const char *spec)
+{
+	char	tail;
+
+	if (sscanf(spec, "%d,%d,%d,%d,%lf,%lf,%lf%c",
+			&rc_adaptive_initial, &rc_adaptive_minimum,
+			&rc_adaptive_zero_minimum, &rc_adaptive_stable_rounds,
+			&rc_adaptive_rms_tolerance, &rc_adaptive_peak_tolerance,
+			&rc_adaptive_absolute_floor, &tail) != 7)
+		return(0);
+	rc_adaptive_accumulate = 1;
+	return(1);
+}
+
+
+static void
+onsig(				/* fatal signal */
+	int  signo
+)
+{
+	static int  gotsig = 0;
+
+	if (gotsig++)			/* two signals and we're gone! */
+		_exit(signo);
+
+#ifdef SIGALRM
+	alarm(15);			/* allow 15 seconds to clean up */
+	signal(SIGALRM, SIG_DFL);	/* make certain we do die */
+#endif
+	eputs("signal - ");
+	eputs(sigerr[signo]);
+	eputs("\n");
+	quit(3);
+}
+
+
+static void
+sigdie(			/* set fatal signal */
+	int  signo,
+	char  *msg
+)
+{
+	if (signal(signo, onsig) == SIG_IGN)
+		signal(signo, SIG_IGN);
+	sigerr[signo] = msg;
+}
+
+
+/* set input/output format */
+static void
+setformat(const char *fmt)
+{
+	switch (fmt[0]) {
+	case 'f':
+	case 'd':
+		SET_FILE_BINARY(stdin);
+		/* fall through */
+	case 'a':
+		inpfmt = fmt[0];
+		break;
+	default:
+		goto fmterr;
+	}
+	switch (fmt[1]) {
+	case '\0':
+		outfmt = inpfmt;
+		return;
+	case 'a':
+	case 'f':
+	case 'd':
+	case 'c':
+		outfmt = fmt[1];
+		break;
+	default:
+		goto fmterr;
+	}
+	if (!fmt[2])
+		return;
+fmterr:
+	sprintf(errmsg, "Illegal i/o format: -f%s", fmt);
+	error(USER, errmsg);
+}
+
+
+/* Set overriding options */
+static void
+override_options(void)
+{
+	shadthresh = 0;
+	ambssamp = 0;
+	ambacc = 0;
+	if (accumulate <= 0)	/* no output flushing for single record */
+		xres = yres = 0;
+}
+
+
+int
+main(int argc, char *argv[])
+{
+#define	 check(ol,al)		if (argv[i][ol] || \
+				badarg(argc-i-1,argv+i+1,al)) \
+				goto badopt
+#define	 check_bool(olen,var)		switch (argv[i][olen]) { \
+				case '\0': var = !var; break; \
+				case '+': case '1': var = 1; break; \
+				case '-': case '0': var = 0; break; \
+				default: goto badopt; }
+	char	*curout = NULL;
+	char	*prms = NULL;
+	char	*binval = NULL;
+	int	bincnt = 0;
+	int	rval;
+	int	i;
+					/* global program name */
+	argv[0] = fixargv0(argv[0]);
+	gargv = argv;
+	gargc = argc;
+					/* feature check only? */
+	strcat(RFeatureList, RCONTRIB_FEATURES);
+	if (argc > 1 && !strcmp(argv[1], "-features"))
+		return feature_status(argc-2, argv+2);
+#if defined(_WIN32) || defined(_WIN64) 	/* increase file limit to maximum */
+	for (i = 8192; i > _IOB_ENTRIES; i >>= 1)
+		if (_setmaxstdio(i) == i)
+			break;
+#endif
+	initfunc();			/* initialize calcomp routines */
+	calcontext(RCCONTEXT);
+					/* option city */
+	for (i = 1; i < argc; i++) {
+						/* expand arguments */
+		while ((rval = expandarg(&argc, &argv, i)) > 0)
+			;
+		if (rval < 0) {
+			sprintf(errmsg, "cannot expand '%s'", argv[i]);
+			error(SYSTEM, errmsg);
+		}
+		if (argv[i] == NULL || argv[i][0] != '-')
+			break;			/* break from options */
+		if (!strcmp(argv[i], "-version")) {
+			puts(VersionID);
+			quit(0);
+		}
+		if (!strcmp(argv[i], "-defaults") ||
+				!strcmp(argv[i], "-help")) {
+			override_options();
+			printdefaults();
+			quit(0);
+		}
+		if (!strcmp(argv[i], "--direct-specular-only")) {
+			direct_specular_only = 1;
+			continue;
+		}
+		if (!strcmp(argv[i], "--rflux-inactive-sentinel")) {
+			rc_rflux_inactive_sentinel = 1;
+			continue;
+		}
+		if (!strcmp(argv[i], "--adaptive-accumulate")) {
+			if (++i >= argc || !set_adaptive_accumulate(argv[i]))
+				goto badopt;
+			continue;
+		}
+		if (!strcmp(argv[i], "--adaptive-accumulate-report")) {
+			if (++i >= argc)
+				goto badopt;
+			rc_adaptive_report = argv[i];
+			continue;
+		}
+		if (!strcmp(argv[i], "--path-output")) {
+			if (++i >= argc || !rc_set_path_output(argv[i]))
+				goto badopt;
+			continue;
+		}
+		if (!strcmp(argv[i], "--path-components")) {
+			if (++i >= argc || !rc_set_path_components(argv[i]))
+				goto badopt;
+			continue;
+		}
+		if (!strcmp(argv[i], "--source-components")) {
+			if (++i >= argc || !rc_set_source_components(argv[i]))
+				goto badopt;
+			continue;
+		}
+		if (!strcmp(argv[i], "--path-direct-max-reflections")) {
+			if (++i >= argc || !isint(argv[i]))
+				goto badopt;
+			rc_path_direct_max_reflections = atoi(argv[i]);
+			if (rc_path_direct_max_reflections < 0)
+				goto badopt;
+			continue;
+		}
+		if (!strcmp(argv[i], "--path-direct-max-ambient")) {
+			if (++i >= argc || !isint(argv[i]))
+				goto badopt;
+			rc_path_direct_max_ambient = atoi(argv[i]);
+			if (rc_path_direct_max_ambient < 0)
+				goto badopt;
+			continue;
+		}
+		if (!strcmp(argv[i], "--path-direct-straight-only")) {
+			rc_path_direct_straight_only = 1;
+			continue;
+		}
+		if (!strcmp(argv[i], "--path-mirror-modifiers")) {
+			if (++i >= argc)
+				goto badopt;
+			rc_add_path_mirror_file(argv[i]);
+			continue;
+		}
+		if (!strcmp(argv[i], "--path-mirror-orders")) {
+			if (++i >= argc || !rc_set_path_mirror_orders(argv[i]))
+				goto badopt;
+			continue;
+		}
+		rval = getrenderopt(argc-i, argv+i);
+		if (rval >= 0) {
+			i += rval;
+			continue;
+		}
+		switch (argv[i][1]) {
+		case 'n':			/* number of cores */
+			check(2,"i");
+			nproc = atoi(argv[++i]);
+			if (nproc <= 0)
+				error(USER, "bad number of processes");
+			break;
+		case 'W':			/* internal: spawned worker mode */
+			check(2, "i");
+			rc_worker = 1;
+			rc_worker_id = atoi(argv[++i]);
+			if (rc_worker_id < 0)
+				error(USER, "bad worker identifier");
+			break;
+		case 'V':			/* output contributions */
+			check_bool(2,contrib);
+			break;
+		case 'x':			/* x resolution */
+			check(2,"i");
+			xres = atoi(argv[++i]);
+			break;
+		case 'y':			/* y resolution */
+			check(2,"i");
+			yres = atoi(argv[++i]);
+			break;
+		case 'w':			/* warnings */
+			rval = (erract[WARNING].pf != NULL);
+			check_bool(2,rval);
+			if (rval) erract[WARNING].pf = wputs;
+			else erract[WARNING].pf = NULL;
+			break;
+		case 'l':			/* limit distance */
+			if (argv[i][2] != 'd')
+				goto badopt;
+			check_bool(3,lim_dist);
+			break;
+		case 'I':			/* immed. irradiance */
+			check_bool(2,imm_irrad);
+			break;
+		case 'f':			/* force or format */
+			if (argv[i][2] == 'o') {
+				check_bool(3,force_open);
+				break;
+			}
+			setformat(argv[i]+2);
+			break;
+		case 'o':			/* output */
+			check(2,"s");
+			curout = argv[++i];
+			break;
+		case 'r':			/* recover output */
+			check_bool(2,recover);
+			break;
+		case 'h':			/* header output */
+			check_bool(2,header);
+			break;
+		case 'p':			/* parameter setting(s) */
+			check(2,"s");
+			set_eparams(prms = argv[++i]);
+			break;
+		case 'c':			/* sample count */
+			check(2,"i");
+			accumulate = atoi(argv[++i]);
+			break;
+		case 'b':			/* bin expression/count */
+			if (argv[i][2] == 'n') {
+				check(3,"s");
+				bincnt = (int)(eval(argv[++i]) + .5);
+				break;
+			}
+			check(2,"s");
+			binval = argv[++i];
+			break;
+		case 'm':			/* modifier name */
+			check(2,"s");
+			addmodifier(argv[++i], curout, prms, binval, bincnt);
+			break;
+		case 'M':			/* modifier file */
+			check(2,"s");
+			addmodfile(argv[++i], curout, prms, binval, bincnt);
+			break;
+		case 't':			/* reporting interval */
+			check(2,"i");
+			report_intvl = atoi(argv[++i]);
+			break;
+		default:
+			goto badopt;
+		}
+	}
+	if (nmods <= 0)
+		error(USER, "missing required modifier argument");
+	if (rc_adaptive_accumulate) {
+		if (accumulate <= 1 || nproc <= 1 || yres <= 0 || xres > 1 ||
+				rc_adaptive_initial <= 0 ||
+				rc_adaptive_initial > rc_adaptive_minimum ||
+				rc_adaptive_minimum > accumulate ||
+				rc_adaptive_zero_minimum < rc_adaptive_minimum ||
+				rc_adaptive_zero_minimum > accumulate ||
+				rc_adaptive_stable_rounds <= 0 ||
+				rc_adaptive_rms_tolerance < 0. ||
+				rc_adaptive_peak_tolerance < 0. ||
+				rc_adaptive_absolute_floor <= 0.)
+			error(USER, "invalid adaptive accumulation settings");
+	}
+					/* override some option settings */
+	override_options();
+					/* set/check spectral sampling */
+	if (setspectrsamp(CNDX, WLPART) < 0)
+		error(USER, "unsupported spectral sampling");
+					/* initialize object types */
+	initotypes();
+					/* initialize urand */
+	if (rand_samp) {
+		srandom((long)time(0));
+		initurand(0);
+	} else {
+		srandom(0L);
+		initurand(2048);
+	}
+					/* set up signal handling */
+	sigdie(SIGINT, "Interrupt");
+#ifdef SIGHUP
+	sigdie(SIGHUP, "Hangup");
+#endif
+	sigdie(SIGTERM, "Terminate");
+#ifdef SIGPIPE
+	sigdie(SIGPIPE, "Broken pipe");
+#endif
+#ifdef SIGALRM
+	sigdie(SIGALRM, "Alarm clock");
+#endif
+#ifdef	SIGXCPU
+	sigdie(SIGXCPU, "CPU limit exceeded");
+	sigdie(SIGXFSZ, "File size exceeded");
+#endif
+#ifdef	NICE
+	nice(NICE);			/* lower priority */
+#endif
+					/* get octree */
+	if (i == argc)
+		octname = NULL;
+	else if (i == argc-1)
+		octname = argv[i];
+	else
+		goto badopt;
+	if (octname == NULL)
+		error(USER, "missing octree argument");
+
+	readoct(octname, ~(IO_FILES|IO_INFO), &thescene, NULL);
+	nsceneobjs = nobjects;
+
+	/* PMAP: set up & load photon maps */
+	ray_init_pmap();     
+	
+	marksources();			/* find and mark sources */
+	
+	/* PMAP: init photon map for light source contributions */
+	initPmapContrib(&modconttab, nmods);
+
+	setambient();			/* initialize ambient calculation */
+	
+	rcontrib();			/* trace ray contributions (loop) */
+
+	/* PMAP: free photon maps */
+	ray_done_pmap();     
+	
+	quit(0);	/* exit clean */
+
+badopt:
+	fprintf(stderr,
+"Usage: %s [-n nprocs][-V][-c count][-r][-e expr][-f source][-o ospec][-p p1=V1,p2=V2][-b binv][-bn N] [--adaptive-accumulate initial,min,zero-min,stable,rms,peak,floor] [--adaptive-accumulate-report file] [--direct-specular-only] [--path-output all|explicit|residual] [--path-components total,direct] [--source-components total,physical] [--path-direct-max-reflections N] [--path-direct-max-ambient N] [--path-direct-straight-only] [--path-mirror-modifiers file] [--path-mirror-orders list] {-m mod | -M file} [rtrace options] octree\n",
+			progname);
+	sprintf(errmsg, "command line error at '%s'", argv[i]);
+	error(USER, errmsg);
+	return(1);	/* pro forma return */
+
+#undef	check
+#undef	check_bool
+}
+
+
+void
+wputs(				/* warning output function */
+	const char	*s
+)
+{
+	int  lasterrno = errno;
+	if (erract[WARNING].pf == NULL)
+		return;		/* called by calcomp or someone */
+	eputs(s);
+	errno = lasterrno;
+}
+
+
+void
+eputs(				/* put string to stderr */
+	const char  *s
+)
+{
+	static int  midline = 0;
+
+	if (!*s)
+		return;
+	if (!midline++) {
+		fputs(progname, stderr);
+		fputs(": ", stderr);
+	}
+	fputs(s, stderr);
+	if (s[strlen(s)-1] == '\n') {
+		fflush(stderr);
+		midline = 0;
+	}
+}

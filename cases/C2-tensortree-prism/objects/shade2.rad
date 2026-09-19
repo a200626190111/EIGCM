@@ -1,0 +1,20 @@
+# Autodesk Ecotect Analysis 2011 to RADIANCE Exporter
+
+
+void metal ConcSlab_OnGround
+0
+0
+5 	0.592 0.592 0.592   0.60000 0.03000
+
+
+ConcSlab_OnGround polygon zone02.rad00000
+0
+0
+15
+ 	-6.11894  -3.26290  -0.00000
+ 	-0.03190  -3.26290  0.00000
+ 	0.00000  -9.20000  0.00000
+ 	-6.11894  -9.20000  0.00000
+ 	-6.11894  -3.26290  0.00000
+
+

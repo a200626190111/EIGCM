@@ -1,0 +1,37 @@
+name: Build and validate
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libtiff-dev perl
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_HEADLESS=ON
+
+      - name: Build EIGCM commands
+        run: >-
+          cmake --build build --parallel
+          --target dcglare2 bsdf2reinhart ttsuncontrast
+          specularcontrast directlobecontrast
+
+      - name: Run scheduler tests
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Validate manuscript configurations
+        shell: bash
+        run: |
+          for cfg in cases/C*/eigcm.cfg; do
+            python3 eigcm_scheduler.py inspect "$cfg"
+            python3 eigcm_scheduler.py plan "$cfg" --summary
+          done

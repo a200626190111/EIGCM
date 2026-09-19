@@ -1,0 +1,21 @@
+!xform objects/Layer0.rad
+
+!xform objects/wall.rad
+
+!xform objects/roof.rad
+
+!xform objects/floor.rad
+
+!xform objects/computer.rad
+
+!xform objects/lamps.rad
+
+!xform objects/cambinet.rad
+
+!xform objects/window.rad
+
+!xform objects/south_blinds_metal_minus30.rad
+
+!xform objects/west_window_trans.rad
+
+!xform objects/west_blinds_metal.rad

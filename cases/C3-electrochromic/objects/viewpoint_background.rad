@@ -1,0 +1,11 @@
+# Neutral visualization background; not included in the simulation scene.
+
+void glow viewpoint_background_material
+0
+0
+4 1.00 1.00 1.00 0
+
+viewpoint_background_material bubble viewpoint_background_shell
+0
+0
+4 -3.075422 -1.588380 0.750000 100.000000

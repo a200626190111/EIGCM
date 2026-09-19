@@ -1,0 +1,224 @@
+# RCSid $Id$
+
+cmake_minimum_required(VERSION 3.12)
+cmake_policy(SET CMP0020 NEW)
+cmake_policy(SET CMP0048 NEW)
+cmake_policy(SET CMP0054 NEW)
+cmake_policy(SET CMP0074 NEW)
+
+# project-defined modules
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/resources/cmake/modules")
+
+set(SUPPORTED_LANGUAGES C CXX)
+
+# Get the project version.
+set(VERSIONFILE "${CMAKE_CURRENT_LIST_DIR}/src/rt/VERSION")
+if(EXISTS ${VERSIONFILE})
+  file(READ  ${VERSIONFILE} NAMEVERSION)
+  if(${NAMEVERSION} MATCHES "^([A-Za-z]+) +([0-9]+\\.[0-9]+)")
+    # project name must be lower case, or the CPack module fails
+    string(TOLOWER ${CMAKE_MATCH_1} PROGNAME)
+    project(${PROGNAME} VERSION ${CMAKE_MATCH_2} LANGUAGES ${SUPPORTED_LANGUAGES})
+  endif()
+else()
+    project(radiance LANGUAGES ${SUPPORTED_LANGUAGES})
+endif()
+
+message("Project: " ${CMAKE_PROJECT_NAME} " " ${PROJECT_VERSION})
+
+set(PROJECT_VERSION_TWEAK "Unknown" CACHE STRING "Commit Hash")
+find_package(Git)
+if(GIT_FOUND)
+  execute_process(COMMAND "${GIT_EXECUTABLE}" "rev-parse" "--short=10" "HEAD"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    TIMEOUT 10
+    RESULT_VARIABLE RESULT
+    OUTPUT_VARIABLE GIT_VERSION
+    ERROR_QUIET
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  if(${RESULT} EQUAL 0 AND NOT "${GIT_VERSION}" EQUAL "${PROJECT_VERSION_TWEAK}")
+    set(PROJECT_VERSION_TWEAK ${GIT_VERSION} CACHE STRING "Commit Hash" FORCE)
+  endif()
+endif()
+
+enable_testing()
+include(CTest)
+
+option(BUILD_SHARED_LIBS "Build radiance using shared libraries?" OFF)
+option(BUILD_HEADLESS "Build radiance without any GUI components?" OFF)
+option(BUILD_PABOPTO_UTILS "Build PABOpto Utilities?" OFF)
+option(BUILD_LIBTIFF "Build libtiff?" OFF)
+option(BUILD_QT "Build Qt related stuff?" OFF)
+
+if(NOT WIN32)
+  set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY 1)
+  install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/doc/man/" DESTINATION man)
+  if(BUILD_QT)
+    set(qt_plugin_term "PLUGIN")
+  endif()
+endif()
+
+if(WIN32)
+  set(CPACK_NSIS_INSTALL_ROOT "C:")
+  set(CPACK_NSIS_MODIFY_PATH 1)
+  if(BUILD_QT)
+    set(qt_plugin_term "LIBRARY")
+  endif()
+
+  # Set RAYPATH on install
+  set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS
+    "WriteRegExpandStr HKLM \\\"SYSTEM\\\\CurrentControlSet\\\\Control\\\\Session Manager\\\\Environment\\\" RAYPATH '\\\$INSTDIR\\\\lib\\\;.'"
+  )
+
+  # Unset RAYPATH on uninstall
+  set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS
+    "DeleteRegValue HKLM \\\"SYSTEM\\\\CurrentControlSet\\\\Control\\\\Session Manager\\\\Environment\\\" RAYPATH"
+  )
+endif()
+
+if(UNIX)
+  set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local/radiance")
+  add_definitions(-Dlinux -D_FILE_OFFSET_BITS=64 -DNOSTEREO)
+else()
+  set(CPACK_PACKAGING_INSTALL_PREFIX "/")
+endif()
+
+set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_TWEAK}-${CMAKE_SYSTEM_NAME}")
+
+if(APPLE)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c11 -std=c++11 -stdlib=libc++")
+  add_compile_options(-O2 -DBSD -DNOSTEREO -Dfreebsd)
+  add_definitions(-DBSD -DNOSTEREO -Dfreebsd)
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13")
+endif()
+
+if(BUILD_LIBTIFF)
+  include(ExternalProject)
+  set(LIBTIFF_URL http://download.osgeo.org/libtiff/tiff-4.7.0.tar.gz)
+  set(LIBTIFF_MD5 3A0FA4A270A4A192B08913F88D0CFBDD)
+  if(WIN32)
+    ExternalProject_Add(libtiff
+      URL ${LIBTIFF_URL}
+      URL_MD5 ${LIBTIFF_MD5}
+      CMAKE_GENERATOR "NMake Makefiles"
+      CMAKE_ARGS
+        "-DBUILD_SHARED_LIBS=OFF"
+        "-DCMAKE_BUILD_TYPE=Release"
+        "-Djpeg=OFF"
+        "-Dzlib=OFF"
+        "-Dwebp=OFF"
+        "-Dlzma=OFF"
+        "-Dtiff-tools=OFF"
+        "-Dtiff-tests=OFF"
+        "-Dtiff-docs=OFF"
+        "../libtiff"
+      INSTALL_COMMAND ""
+    )
+    set(TIFF_LIBRARY ${CMAKE_BINARY_DIR}/libtiff-prefix/src/libtiff-build/libtiff/tiff.lib)
+  else()
+    ExternalProject_Add(libtiff
+      URL ${LIBTIFF_URL}
+      URL_MD5 ${LIBTIFF_MD5}
+      CMAKE_ARGS
+        "-DBUILD_SHARED_LIBS=OFF"
+        "-DCMAKE_BUILD_TYPE=Release"
+        "-Djpeg=OFF"
+        "-Dzlib=OFF"
+        "-Dwebp=OFF"
+        "-Dlzma=OFF"
+        "-Dtiff-tools=OFF"
+        "-Dtiff-tests=OFF"
+        "-Dtiff-docs=OFF"
+        "../libtiff"
+      INSTALL_COMMAND ""
+    )
+    set(TIFF_LIBRARY ${CMAKE_BINARY_DIR}/libtiff-prefix/src/libtiff-build/libtiff/libtiff.a)
+  endif()
+  set(TIFF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/libtiff/src/libtiff/libtiff)
+endif()
+
+set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "Radiance")
+set(CPACK_RESOURCE_FILE_WELCOME "${radiance_SOURCE_DIR}/Welcome.txt")
+set(CPACK_RESOURCE_FILE_README "${radiance_SOURCE_DIR}/README.txt")
+set(CPACK_RESOURCE_FILE_LICENSE "${radiance_SOURCE_DIR}/License.txt")
+
+if(APPLE)
+  set(CPACK_GENERATOR "PackageMaker")
+elseif(UNIX)
+  set(CPACK_GENERATOR "TGZ")
+endif()
+
+include(CPack)
+
+if(NOT BUILD_HEADLESS)
+  if(BUILD_QT)
+    find_package(Qt5Widgets)
+    get_target_property(QT_LIBRARY_DIR Qt5::Core LOCATION)
+    get_filename_component(QT_LIBRARY_DIR ${QT_LIBRARY_DIR} PATH)
+    get_filename_component(QT_LIBRARY_DIR "${QT_LIBRARY_DIR}/.." ABSOLUTE)
+  endif()
+  if(APPLE)
+    set(X11_ROOT "/opt/X11")
+  endif()
+  find_package(X11)
+  if(APPLE)
+     include_directories(${X11_INCLUDE_DIR})
+   endif()
+   if(APPLE AND X11_FOUND)
+     set(CMAKE_FIND_FRAMEWORK NEVER)
+     set(OpenGL_ROOT "/opt/X11")
+     find_package(OpenGL)
+     set(CMAKE_FIND_FRAMEWORK "")
+   else()
+     find_package(OpenGL)
+   endif()
+
+endif()
+
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
+
+if(MSVC)
+  add_definitions(/MP)
+  # Suppress warnings about double-to-float assignments and initializations
+  add_compile_options(/wd"4244" /wd"4305")
+endif()
+if(WIN32 AND "${CMAKE_C_COMPILER_ID}" MATCHES "^(Intel)$")
+  set(_INTEL_WINDOWS 1)
+endif()
+if(MSVC OR _INTEL_WINDOWS)
+  add_definitions(-D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE)
+endif()
+if(WIN32)
+  add_definitions(-DEZXML_NOMMAP -Dfseeko=fseek -Dstrcasecmp=_stricmp)
+endif()
+
+add_subdirectory("src")
+
+set(test_dir "${CMAKE_CURRENT_SOURCE_DIR}/test/test data")
+
+add_subdirectory(resources)
+
+install(PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/eigcm_scheduler.py"
+  DESTINATION "bin"
+  RENAME eigcm
+)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/eigcm_scheduler_example.cfg"
+  DESTINATION "share/eigcm"
+)
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/docs/"
+  DESTINATION "share/doc/eigcm"
+)
+
+install(DIRECTORY "${CMAKE_BINARY_DIR}/lib/"
+  DESTINATION "lib"
+)
+
+# copy make tests to build
+file(COPY test DESTINATION ${CMAKE_BINARY_DIR})
+
+
+include(InstallRequiredSystemLibraries)
+add_subdirectory(InstallRules)

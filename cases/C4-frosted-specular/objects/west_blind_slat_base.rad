@@ -1,0 +1,12 @@
+# One west-window slat, matching the original model's flat 0.075 m slat.
+# Embedded in the window reveal between the glazing and the interior wall face.
+# The glazing-side edge is higher; the room-side edge is lower.
+
+west_blind_metal polygon west_slat_base
+0
+0
+12
+    -6.040000  -1.050000  0.889017
+    -6.040000  -3.050000  0.889017
+    -5.986967  -3.050000  0.835983
+    -5.986967  -1.050000  0.835983

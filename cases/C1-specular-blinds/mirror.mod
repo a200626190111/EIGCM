@@ -1,0 +1,6 @@
+west_blind_metal
+south_blind_metal
+cambinet
+lamps
+sketchup_default_material
+window

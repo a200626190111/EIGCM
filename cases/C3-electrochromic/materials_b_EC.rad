@@ -1,0 +1,44 @@
+## Black reference materials for the electrochromic-glazing case.
+## Opaque surfaces are blackened while the EC glazing transmittance is retained.
+
+void plastic sketchup_default_material
+0
+0
+5 0 0 0 0 0
+
+void alias Layer0 sketchup_default_material
+
+void plastic cambinet
+0
+0
+5 0 0 0 0 0
+
+void plastic computer
+0
+0
+5 0 0 0 0 0
+
+void plastic floor
+0
+0
+5 0 0 0 0 0
+
+void metal lamps
+0
+0
+5 0 0 0 0 0
+
+void plastic roof
+0
+0
+5 0 0 0 0 0
+
+void plastic wall
+0
+0
+5 0 0 0 0 0
+
+void glass window
+0
+0
+3 0.01091 0.01091 0.01091

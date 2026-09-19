@@ -1,0 +1,69 @@
+# RCSid: $Id: Rmakefile,v 1.12 2023/02/09 00:18:05 greg Exp $
+#
+#  Compiles for icalc, rcalc, ev, and utilities
+#
+
+OPT = -O
+
+CC = cc
+
+MACH = -DIEEE
+
+DEFS = -DBIGGERLIB
+
+CFLAGS = $(OPT) $(MACH) $(DEFS) -I../common -L../lib
+
+MLIB = -lm
+
+INSTALL = cp
+
+INSTDIR = /usr/local/bin
+
+PROGS = icalc ev rcalc total cnt neaten rlam rsplit tabfunc histo
+
+all:	$(PROGS)
+
+install:	$(PROGS)
+	$(INSTALL) $(PROGS) $(INSTDIR)
+
+clean:
+	set nonomatch; rm -f *.o $(PROGS)
+
+icalc:	calc.o
+	$(CC) $(CFLAGS) -o icalc calc.o -lrtrad $(MLIB)
+
+ev:	ev.o
+	$(CC) $(CFLAGS) -o ev ev.o -lrtrad $(MLIB)
+
+rcalc:	rcalc.o
+	$(CC) $(CFLAGS) -o rcalc rcalc.o -lrtrad $(MLIB)
+
+total:	total.o
+	$(CC) $(CFLAGS) -o total total.o -lrtrad $(MLIB)
+
+cnt:		cnt.o
+	$(CC) $(CFLAGS) -o cnt cnt.o -lrtrad
+
+neaten:	neat.o
+	$(CC) $(CFLAGS) -o neaten neat.o
+
+rlam:		lam.o
+	$(CC) $(CFLAGS) -o rlam lam.o -lrtrad
+
+rsplit:	rsplit.o
+	$(CC) $(CFLAGS) -o rsplit rsplit.c -lrtrad
+
+tabfunc:	tabfunc.o
+	$(CC) $(CFLAGS) -o tabfunc tabfunc.o -lrtrad $(MLIB)
+
+histo:	histo.o
+	$(CC) $(CFLAGS) -o histo histo.o $(MLIB)
+
+calc.o ev.o rcalc.o:	../common/calcomp.h
+
+total.o rcalc.o:	../common/platform.h
+
+rcalc.o:	../common/rterror.h ../common/rtmisc.h ../common/rtio.h
+
+tabfunc.o:	../common/rtmath.h ../common/mat4.h \
+../common/fvect.h ../common/tiff.h

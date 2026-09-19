@@ -1,0 +1,333 @@
+# Collision-free viewpoint markers for the publication figure.
+# 65 positions, grid spacing 0.50 m, height 1.30 m.
+
+void plastic paper_viewpoint_material
+0
+0
+5 0.03 0.18 0.45 0 0
+
+paper_viewpoint_material sphere paper_viewpoint_001
+0
+0
+4 -5.575422 -2.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_002
+0
+0
+4 -5.075422 -2.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_003
+0
+0
+4 -4.575422 -2.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_004
+0
+0
+4 -4.075422 -2.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_005
+0
+0
+4 -3.575422 -2.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_006
+0
+0
+4 -3.075422 -2.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_007
+0
+0
+4 -2.575422 -2.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_008
+0
+0
+4 -2.075422 -2.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_009
+0
+0
+4 -1.575422 -2.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_010
+0
+0
+4 -1.075422 -2.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_011
+0
+0
+4 -0.575422 -2.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_012
+0
+0
+4 -5.575422 -2.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_013
+0
+0
+4 -5.075422 -2.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_014
+0
+0
+4 -4.575422 -2.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_015
+0
+0
+4 -4.075422 -2.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_016
+0
+0
+4 -3.575422 -2.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_017
+0
+0
+4 -3.075422 -2.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_018
+0
+0
+4 -2.075422 -2.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_019
+0
+0
+4 -1.575422 -2.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_020
+0
+0
+4 -1.075422 -2.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_021
+0
+0
+4 -0.575422 -2.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_022
+0
+0
+4 -5.575422 -1.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_023
+0
+0
+4 -5.075422 -1.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_024
+0
+0
+4 -4.575422 -1.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_025
+0
+0
+4 -4.075422 -1.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_026
+0
+0
+4 -3.575422 -1.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_027
+0
+0
+4 -3.075422 -1.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_028
+0
+0
+4 -2.575422 -1.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_029
+0
+0
+4 -2.075422 -1.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_030
+0
+0
+4 -1.575422 -1.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_031
+0
+0
+4 -1.075422 -1.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_032
+0
+0
+4 -0.575422 -1.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_033
+0
+0
+4 -5.575422 -1.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_034
+0
+0
+4 -5.075422 -1.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_035
+0
+0
+4 -4.575422 -1.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_036
+0
+0
+4 -4.075422 -1.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_037
+0
+0
+4 -3.575422 -1.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_038
+0
+0
+4 -3.075422 -1.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_039
+0
+0
+4 -2.575422 -1.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_040
+0
+0
+4 -2.075422 -1.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_041
+0
+0
+4 -1.575422 -1.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_042
+0
+0
+4 -1.075422 -1.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_043
+0
+0
+4 -0.575422 -1.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_044
+0
+0
+4 -5.575422 -0.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_045
+0
+0
+4 -5.075422 -0.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_046
+0
+0
+4 -4.575422 -0.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_047
+0
+0
+4 -4.075422 -0.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_048
+0
+0
+4 -3.575422 -0.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_049
+0
+0
+4 -3.075422 -0.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_050
+0
+0
+4 -2.575422 -0.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_051
+0
+0
+4 -2.075422 -0.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_052
+0
+0
+4 -1.575422 -0.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_053
+0
+0
+4 -1.075422 -0.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_054
+0
+0
+4 -0.575422 -0.838380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_055
+0
+0
+4 -5.575422 -0.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_056
+0
+0
+4 -5.075422 -0.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_057
+0
+0
+4 -4.575422 -0.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_058
+0
+0
+4 -4.075422 -0.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_059
+0
+0
+4 -3.575422 -0.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_060
+0
+0
+4 -3.075422 -0.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_061
+0
+0
+4 -2.575422 -0.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_062
+0
+0
+4 -2.075422 -0.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_063
+0
+0
+4 -1.575422 -0.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_064
+0
+0
+4 -1.075422 -0.338380 1.300000 0.040000
+
+paper_viewpoint_material sphere paper_viewpoint_065
+0
+0
+4 -0.575422 -0.338380 1.300000 0.040000
+

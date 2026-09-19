@@ -1,0 +1,12 @@
+# West-facing window added to the west wall.
+# Opening: y = -3.050 to -1.050, z = 0.800 to 2.200.
+# The glazing is centered within the 0.143518 m wall thickness.
+
+window polygon west_window_glazing
+0
+0
+12
+    -6.047181  -3.050000  2.200000
+    -6.047181  -3.050000  0.800000
+    -6.047181  -1.050000  0.800000
+    -6.047181  -1.050000  2.200000

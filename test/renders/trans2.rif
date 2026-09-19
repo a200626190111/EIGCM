@@ -1,0 +1,37 @@
+# RCSid $Id: trans2.rif,v 1.7 2023/07/27 05:20:03 greg Exp $
+#
+# Simple version of space using trans2 illum for window - compare to tfunc.rif
+#
+
+OCTREE = trans2.oct
+
+materials = basic.mat
+scene = diorama_walls.rad rect_opening.rad front_cap.rad
+scene = gymbal.rad
+scene = sunset_sky.rad
+illum = illum_trans2.rad
+
+ZONE = I -8 0 0 5 0 3
+
+EXP = +3
+
+RES = 1024
+QUAL = Med
+AMB = trans2.amb
+IND = 1
+VAR = Hi
+DET = Low
+PEN = True
+
+mkillum = -ab 1 -ad 4096 -as 1024
+
+render = @render.opt
+
+rpict = -ps 1
+
+pfilt = -m .3
+
+view = def -vf inside.vf
+view = fish -vf fish.vf
+view= win -vta -vp -7.6 2 1.5 -vd -0.19661 -0.00340317 0.0156469 \
+	-vh 180 -vv 180 -vo 0.56

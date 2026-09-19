@@ -1,0 +1,76 @@
+# xform
+## materials.rad
+## default material
+
+void plastic sketchup_default_material
+0
+0
+5                  0                  0                  0                  0                  0
+## undefined material Layer0
+
+void alias Layer0
+	sketchup_default_material
+## undefined material cambinet
+
+void plastic cambinet
+0
+0
+5                  0                  0                  0                  0                  0
+## undefined material computer
+
+void plastic computer
+0
+0
+5                  0                  0                  0                  0                  0
+## undefined material floor
+
+void plastic floor
+0
+0
+5                  0                  0                  0                  0                  0
+## undefined material lamps
+
+void metal lamps
+0
+0
+5                  0                  0                  0                  0                  0
+## undefined material roof
+
+void plastic roof
+0
+0
+5                  0                  0                  0                  0                  0
+## undefined material wall
+
+void plastic wall
+0
+0
+5                  0                  0                  0                  0                  0
+## undefined material window
+
+void glass window
+0
+0
+3               0.68               0.68               0.68
+#void BSDF window
+#6 0 ./zhen1_vis.xml 0 0.000 1 .
+#0
+#0
+
+void metal west_blind_metal
+0
+0
+5                0.7                0.7                0.7                0.3                  0
+
+void metal south_blind_metal
+0
+0
+5                0.7                0.7                0.7                0.3                  0
+# Rough specular-transmitting material for the west window.
+# trans arguments: R G B specularity roughness transmissivity tspec
+# roughness = 0.10; tspec = 0.20.
+
+void trans west_window_trans
+0
+0
+7               0.68               0.68               0.68               0.02                0.1                0.9                0.2

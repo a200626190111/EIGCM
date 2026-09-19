@@ -1,0 +1,21 @@
+# Two south-window slats at the first vertical centre (z = 0.9375 m).
+# Width = 0.075 m, tilt = -30 degrees viewed from the room.
+# The room-side edge (larger y) is lower.
+
+south_blind_metal polygon south_slat_left_base
+0
+0
+12
+    -5.497963  -3.261115  0.956250
+    -3.867963  -3.261115  0.956250
+    -3.867963  -3.196163  0.918750
+    -5.497963  -3.196163  0.918750
+
+south_blind_metal polygon south_slat_right_base
+0
+0
+12
+    -2.610422  -3.261115  0.956250
+    -0.975422  -3.261115  0.956250
+    -0.975422  -3.196163  0.918750
+    -2.610422  -3.196163  0.918750

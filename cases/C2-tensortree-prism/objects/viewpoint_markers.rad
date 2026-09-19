@@ -1,0 +1,338 @@
+# Viewpoint position markers for visualization.
+# 66 spheres at z = 1.30 m; grid spacing = 0.50 m.
+
+void glow viewpoint_marker_material
+0
+0
+4 8.0 0.08 0.02 0
+
+viewpoint_marker_material sphere viewpoint_001
+0
+0
+4 -5.575422 -2.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_002
+0
+0
+4 -5.075422 -2.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_003
+0
+0
+4 -4.575422 -2.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_004
+0
+0
+4 -4.075422 -2.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_005
+0
+0
+4 -3.575422 -2.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_006
+0
+0
+4 -3.075422 -2.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_007
+0
+0
+4 -2.575422 -2.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_008
+0
+0
+4 -2.075422 -2.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_009
+0
+0
+4 -1.575422 -2.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_010
+0
+0
+4 -1.075422 -2.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_011
+0
+0
+4 -0.575422 -2.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_012
+0
+0
+4 -5.575422 -2.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_013
+0
+0
+4 -5.075422 -2.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_014
+0
+0
+4 -4.575422 -2.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_015
+0
+0
+4 -4.075422 -2.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_016
+0
+0
+4 -3.575422 -2.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_017
+0
+0
+4 -3.075422 -2.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_018
+0
+0
+4 -2.575422 -2.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_019
+0
+0
+4 -2.075422 -2.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_020
+0
+0
+4 -1.575422 -2.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_021
+0
+0
+4 -1.075422 -2.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_022
+0
+0
+4 -0.575422 -2.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_023
+0
+0
+4 -5.575422 -1.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_024
+0
+0
+4 -5.075422 -1.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_025
+0
+0
+4 -4.575422 -1.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_026
+0
+0
+4 -4.075422 -1.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_027
+0
+0
+4 -3.575422 -1.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_028
+0
+0
+4 -3.075422 -1.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_029
+0
+0
+4 -2.575422 -1.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_030
+0
+0
+4 -2.075422 -1.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_031
+0
+0
+4 -1.575422 -1.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_032
+0
+0
+4 -1.075422 -1.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_033
+0
+0
+4 -0.575422 -1.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_034
+0
+0
+4 -5.575422 -1.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_035
+0
+0
+4 -5.075422 -1.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_036
+0
+0
+4 -4.575422 -1.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_037
+0
+0
+4 -4.075422 -1.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_038
+0
+0
+4 -3.575422 -1.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_039
+0
+0
+4 -3.075422 -1.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_040
+0
+0
+4 -2.575422 -1.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_041
+0
+0
+4 -2.075422 -1.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_042
+0
+0
+4 -1.575422 -1.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_043
+0
+0
+4 -1.075422 -1.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_044
+0
+0
+4 -0.575422 -1.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_045
+0
+0
+4 -5.575422 -0.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_046
+0
+0
+4 -5.075422 -0.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_047
+0
+0
+4 -4.575422 -0.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_048
+0
+0
+4 -4.075422 -0.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_049
+0
+0
+4 -3.575422 -0.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_050
+0
+0
+4 -3.075422 -0.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_051
+0
+0
+4 -2.575422 -0.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_052
+0
+0
+4 -2.075422 -0.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_053
+0
+0
+4 -1.575422 -0.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_054
+0
+0
+4 -1.075422 -0.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_055
+0
+0
+4 -0.575422 -0.838380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_056
+0
+0
+4 -5.575422 -0.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_057
+0
+0
+4 -5.075422 -0.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_058
+0
+0
+4 -4.575422 -0.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_059
+0
+0
+4 -4.075422 -0.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_060
+0
+0
+4 -3.575422 -0.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_061
+0
+0
+4 -3.075422 -0.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_062
+0
+0
+4 -2.575422 -0.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_063
+0
+0
+4 -2.075422 -0.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_064
+0
+0
+4 -1.575422 -0.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_065
+0
+0
+4 -1.075422 -0.338380 1.300000 0.060000
+
+viewpoint_marker_material sphere viewpoint_066
+0
+0
+4 -0.575422 -0.338380 1.300000 0.060000
+

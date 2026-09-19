@@ -1,0 +1,49 @@
+# RCSid $Id: CMakeLists.txt,v 1.9 2025/07/24 01:24:01 greg Exp $
+
+add_executable(cnt cnt.c)
+target_link_libraries(cnt rtrad)
+
+add_executable(ev ev.c)
+target_link_libraries(ev rtrad)
+
+add_executable(histo histo.c)
+target_link_libraries(histo ${LIB_M})
+
+add_executable(icalc calc.c)
+target_link_libraries(icalc rtrad)
+
+add_executable(neaten neat.c)
+
+add_executable(rcalc rcalc.c)
+target_link_libraries(rcalc rtrad)
+
+add_executable(rlam lam.c)
+target_link_libraries(rlam rtrad)
+
+add_executable(rsplit rsplit.c)
+target_link_libraries(rsplit rtrad)
+
+add_executable(tabfunc tabfunc.c)
+target_link_libraries(tabfunc rtrad)
+
+add_executable(total total.c)
+target_link_libraries(total rtrad ${LIB_M})
+
+install(TARGETS
+  cnt
+  ev
+  histo
+  icalc
+  neaten
+  rcalc
+  rlam
+  rsplit
+  tabfunc
+  total
+  RUNTIME DESTINATION "bin"
+)
+
+file(GLOB_RECURSE cal_files "cal/*.*")
+file(COPY ${cal_files}
+  DESTINATION "${CMAKE_BINARY_DIR}/lib"
+)

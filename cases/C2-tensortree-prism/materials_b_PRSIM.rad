@@ -1,0 +1,61 @@
+## materials.rad
+
+## default material
+void plastic sketchup_default_material
+0
+0
+5  0.0 0.0 0.0  0.0 0.0
+
+## undefined material Layer0
+void alias Layer0 sketchup_default_material
+
+## undefined material cambinet
+void plastic cambinet
+0
+0
+5  0.0 0.0 0.0  0.0 0.0
+
+## undefined material computer
+void plastic computer
+0
+0
+5  0.0 0.0 0.0  0.0 0.0
+
+## undefined material floor
+void plastic floor
+0
+0
+5  0.0 0.0 0.0  0.0 0.0
+
+## undefined material lamps
+
+void metal lamps
+0
+0
+5  0.0 0.0 0.0  0.0 0.0
+
+## undefined material roof
+void plastic roof
+0
+0
+5  0.0 0.0 0.0  0.0 0.0
+
+## undefined material wall
+void plastic wall
+0
+0
+5  0.0 0.0 0.0  0.0 0.0
+
+## undefined material window
+
+
+#void BSDF window
+#6 0 ./zhen1_vis.xml 0 0.000 1 .
+#0
+#0
+
+void BSDF window
+6 0 ./zhen1_vis_tt80.xml 0 0.000 1 .
+0
+0
+

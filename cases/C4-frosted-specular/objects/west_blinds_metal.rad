@@ -1,0 +1,27 @@
+# Metal-finish horizontal blinds embedded in the west-window reveal.
+# Window opening: y = -3.050 to -1.050 m, z = 0.800 to 2.200 m.
+# Depth position: x = -6.040000 to -5.986967 m, between the glazing
+# (x = -6.047181 m) and the interior wall face (x = -5.975422 m).
+# Slat size follows the original model: 0.075 x 2.000 m, zero thickness.
+# Centre spacing: 0.075 m.
+# Local tilt = -45 degrees as viewed from the room: the room-side edge is lower.
+
+
+!xform -n west_slat_01 -t 0 0 0.000 west_blind_slat_base.rad
+!xform -n west_slat_02 -t 0 0 0.075 west_blind_slat_base.rad
+!xform -n west_slat_03 -t 0 0 0.150 west_blind_slat_base.rad
+!xform -n west_slat_04 -t 0 0 0.225 west_blind_slat_base.rad
+!xform -n west_slat_05 -t 0 0 0.300 west_blind_slat_base.rad
+!xform -n west_slat_06 -t 0 0 0.375 west_blind_slat_base.rad
+!xform -n west_slat_07 -t 0 0 0.450 west_blind_slat_base.rad
+!xform -n west_slat_08 -t 0 0 0.525 west_blind_slat_base.rad
+!xform -n west_slat_09 -t 0 0 0.600 west_blind_slat_base.rad
+!xform -n west_slat_10 -t 0 0 0.675 west_blind_slat_base.rad
+!xform -n west_slat_11 -t 0 0 0.750 west_blind_slat_base.rad
+!xform -n west_slat_12 -t 0 0 0.825 west_blind_slat_base.rad
+!xform -n west_slat_13 -t 0 0 0.900 west_blind_slat_base.rad
+!xform -n west_slat_14 -t 0 0 0.975 west_blind_slat_base.rad
+!xform -n west_slat_15 -t 0 0 1.050 west_blind_slat_base.rad
+!xform -n west_slat_16 -t 0 0 1.125 west_blind_slat_base.rad
+!xform -n west_slat_17 -t 0 0 1.200 west_blind_slat_base.rad
+!xform -n west_slat_18 -t 0 0 1.275 west_blind_slat_base.rad
