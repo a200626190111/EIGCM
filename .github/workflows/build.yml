@@ -14,7 +14,8 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake libtiff-dev perl
+          sudo apt-get install -y build-essential cmake perl \
+            libgl1-mesa-dev libtiff-dev libx11-dev libxext-dev
 
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_HEADLESS=ON
