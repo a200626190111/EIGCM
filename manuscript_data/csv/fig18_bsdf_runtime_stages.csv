@@ -1,0 +1,11 @@
+BSDF_format,stage,seconds
+TensorTree,scene,1.7
+TensorTree,skyrun,129.306
+TensorTree,sunrun,2547.806
+TensorTree,evaluate,16.573
+TensorTree,total,2695.43
+Klems,scene,2.233
+Klems,skyrun,4.353
+Klems,sunrun,117.944
+Klems,evaluate,6.548
+Klems,total,131.121

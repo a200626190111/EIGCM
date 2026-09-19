@@ -1,0 +1,7 @@
+parameter,Balanced,High
+accuracy,2.0,1.0
+skyres,10.0,15.0
+idres,16.0,32.0
+Sky-engine nlev,4.0,5.0
+Sun-engine nlev,5.0,6.0
+srcnlev,2.0,3.0

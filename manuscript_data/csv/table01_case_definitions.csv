@@ -1,0 +1,5 @@
+case,fenestration_system,abbreviation,dominant_challenge
+C1,Specular Venetian blinds,SVB,Directional solar reflection from specular slats
+C2,Prismatic daylight-redirecting fenestration,PDRF,Concentrated and redirected transmission peaks
+C3,Electrochromic glazing,ECG,State-dependent solar transmittance
+C4,Specular Venetian blinds with frosted glazing,SVB-FG,Coupled specular reflection and rough transmission

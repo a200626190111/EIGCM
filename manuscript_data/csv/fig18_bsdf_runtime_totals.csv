@@ -1,0 +1,5 @@
+method,BSDF_format,total_seconds,scope
+Raytraverse,Klems,131.121,scene+skyrun+sunrun+evaluate
+Raytraverse,TensorTree,2695.43,scene+skyrun+sunrun+evaluate
+EIGCM,Klems,26.874,annual workflow; excludes one-time 5.960 s preprocessing
+EIGCM,TensorTree,64.33,historical annual workflow using earlier specular-processing implementation

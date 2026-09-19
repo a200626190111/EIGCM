@@ -1,0 +1,24 @@
+item,content,display_type,data_status
+Fig. 1,EIGCM annual multi-view workflow,Schematic,No numeric source data
+Fig. 2,Test model and viewpoints,Geometry,No plotted numeric data
+Fig. 3,Directional transmission distribution of PDRF,BSDF distribution,Embedded figure available; underlying directional dataset not identified
+Fig. 4,Representative viewpoints V1 and V2,Geometry,No plotted numeric data
+Fig. 5,Specular Venetian-blind geometry,Geometry,No plotted numeric data
+Fig. 6,C1 annual two-view DGP agreement,Scatter,Raw paired DGP and exact metrics included
+Fig. 7,C2 annual two-view DGP agreement,Scatter,Raw paired DGP and exact metrics included
+Fig. 8,C3 annual two-view DGP agreement,Scatter,Raw paired DGP and exact metrics included
+Fig. 9,C4 annual two-view DGP agreement,Scatter,Raw paired DGP and exact metrics included
+Fig. 10,Cross-case DGP MAE and RMSE,Summary plot,Exact metrics included; legacy plotting script used approximate visual readings
+Fig. 11,Glare-event recall and precision,Heatmap,Confusion counts and scores included; F2 recomputed in workbook
+Fig. 12,DGP RMSE by reference-DGP stratum,Line plot,Exact stratum metrics and counts included
+Fig. 13,Viewpoint-specific DGP RMSE,Box plot,Per-view RMSE recalculated from aligned source data
+Fig. 14,DGP contrast index comparison,Scatter,Raw contrast pairs and exact metrics included
+Fig. 15,C2 aggregate contrast comparison,Scatter,Reported metrics and solar-sampling parameter comparison included
+Fig. 16,Sharp-peak PDRF comparison,Scatter and BSDF slice,Raw two-view DGP data and exact metrics included
+Fig. 17,Saturation term and vertical illuminance diagnostics,Scatter and dumbbell,Raw saturation data and exact metrics included; final redrawing script used synthetic points
+Fig. 18,Klems and TensorTree runtime comparison,Bar chart,Stage-resolved and total timings included
+Table 1,Fenestration configurations,Table,Included
+Table 2,Raytraverse Balanced and High parameters,Table,Included
+Table 3,Single-view annual computation times,Table,Included
+Table 4,520-view computation times,Table,Included
+Table 5,Raytraverse solar-sampling comparison,Table,Reported values included; baseline and dense values come from different analysis scopes

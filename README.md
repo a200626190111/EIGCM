@@ -59,6 +59,13 @@ A complete Balanced run is computationally intensive. Use
 - [Scheduler configuration](docs/CONFIGURATION.md)
 - [Validation cases](cases/README.md)
 
+## Manuscript source data
+
+The numerical source data associated with the manuscript figures and tables are
+available in [`manuscript_data/`](manuscript_data/). The directory contains a
+formatted Excel summary, machine-readable CSV files organized by figure or
+table number, and a [downloadable ZIP archive](manuscript_data/EIGCM_manuscript_source_data.zip).
+
 ## License
 
 This repository includes the complete Radiance 6.1 source tree, not only the

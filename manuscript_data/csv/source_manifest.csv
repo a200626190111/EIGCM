@@ -1,0 +1,20 @@
+related_item,file,rows,columns,description
+Figs. 6-9,fig06-09_two_view_dgp_source.csv,35127,9,Raw paired annual DGP values
+Figs. 6-10,fig06-10_two_view_dgp_metrics.csv,15,14,Exact two-view accuracy metrics
+Figs. 10-13 and 17,fig10-13_multiview_dgp_source.csv,74880,13,Aligned 520-view DGP and vertical illuminance
+Fig. 10,fig10_multiview_dgp_metrics.csv,15,16,Exact 520-view accuracy metrics
+Fig. 11,fig11_event_metrics.csv,30,12,Two-view and 520-view event metrics
+Fig. 12,fig12_stratified_dgp_metrics.csv,60,16,Exact stratified errors and bin counts
+Fig. 13,fig13_viewpoint_rmse.csv,7800,5,RMSE for each method and viewpoint
+Fig. 14,fig14_contrast_source.csv,35127,10,Raw two-view contrast-index values
+Fig. 14,fig14_contrast_metrics.csv,4,20,Exact low- and high-contrast metrics
+Fig. 15 and Table 5,table05_fig15_solar_sampling_metrics.csv,15,11,Raytraverse solar-sampling metrics
+Fig. 16,fig16_sharp_prism_source.csv,8786,10,Raw paired two-view DGP and Ev values
+Fig. 16,fig16_sharp_prism_metrics.csv,9,13,Exact regression and event metrics
+Fig. 17,fig17_saturation_source.csv,56160,8,Raw reference DGP and illuminance-only DGPs
+Fig. 17,fig17_saturation_metrics.csv,3,9,Exact saturation-term metrics
+Fig. 17,fig17_vertical_illuminance_metrics.csv,6,10,Exact vertical-eye-illuminance metrics
+Table 3,table03_single_view_runtime.csv,8,6,Reported single-view runtimes
+Table 4,table04_multiview_runtime.csv,4,6,Reported 520-view runtimes
+Fig. 18,fig18_bsdf_runtime_stages.csv,10,3,Stage-resolved Raytraverse timing
+Fig. 18,fig18_bsdf_runtime_totals.csv,4,4,Total Raytraverse and EIGCM timing
