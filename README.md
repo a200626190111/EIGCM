@@ -61,7 +61,10 @@ A complete Balanced run is computationally intensive. Use
 
 ## License
 
-The Radiance source and EIGCM modifications are distributed under the
-[Radiance Software License, Version 2.0](License.txt). See [NOTICE.md](NOTICE.md)
-for attribution and release scope.
-
+This repository includes the complete Radiance 6.1 source tree, not only the
+EIGCM additions. The upstream Radiance source and the publicly released EIGCM
+enhancements are distributed under the
+[Radiance Software License, Version 2.0](License.txt), except where an
+individual file contains a more specific notice. See [NOTICE.md](NOTICE.md) for
+upstream attribution, the EIGCM modification scope, redistribution conditions,
+and the non-endorsement statement.
