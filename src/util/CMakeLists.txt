@@ -90,7 +90,9 @@ add_executable(dcglare2 dcglare2.c cmbsdf.c cmconst.c cmatrix.c cmglare2.c)
 target_link_libraries(dcglare2 rtrad)
 
 find_package(Threads REQUIRED)
-add_executable(specularcontrast specularcontrast.cpp)
+add_executable(specularcontrast
+  specularcontrast.cpp
+  specularcontrast_options.cpp)
 target_compile_features(specularcontrast PRIVATE cxx_std_11)
 if(NOT WIN32)
   target_sources(specularcontrast PRIVATE
@@ -108,6 +110,16 @@ if(NOT WIN32)
     raycalls radiance cpprad rtrad Threads::Threads)
 else()
   target_link_libraries(specularcontrast rtrad Threads::Threads)
+endif()
+
+if(NOT WIN32)
+  add_custom_target(specularcontrast_regression
+    COMMAND ${CMAKE_COMMAND} -E env
+      OCONV=$<TARGET_FILE:oconv>
+      bash ${CMAKE_CURRENT_SOURCE_DIR}/test_specularcontrast_regression.sh
+      $<TARGET_FILE:specularcontrast>
+    DEPENDS specularcontrast oconv
+    VERBATIM)
 endif()
 
 add_executable(ttsuncontrast ttsuncontrast.cpp)

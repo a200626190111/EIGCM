@@ -15,6 +15,7 @@ static const char RCSid[] = "$Id$";
 #include "rtprocess.h"
 #include "rtio.h"
 #include "resolu.h"
+#include "specularcontrast_options.h"
 #include "standard.h"
 
 #ifdef SPECULARCONTRIB_BUILTIN_RCONTRIB
@@ -51,13 +52,16 @@ static const char RCSid[] = "$Id$";
 #include <signal.h>
 #endif
 
+using specularcontrast::Options;
+using specularcontrast::Vec3;
+using specularcontrast::parse_options;
+using specularcontrast::validate_options;
+
 namespace {
 
 const double kLuminousEfficacy = 179.0;
 const double kBrightness[3] = {0.265074, 0.670115, 0.064811};
 const double kEpsilon = 1.0e-12;
-
-typedef std::array<double, 3> Vec3;
 
 struct Viewpoint {
     Vec3 origin;
@@ -145,83 +149,6 @@ struct Primitive {
     std::vector<double> real_args;
 };
 
-struct Options {
-    bool no_header = false;
-    bool no_hit_check = false;
-    bool integrated_path_check = false;
-    bool separate_path_prefilter = false;
-    bool include_direct_sun = false;
-    bool all_normal_pairs = false;
-    bool direct_specular_only = false;
-    bool adaptive_sun_sampling = false;
-    bool adaptive_sun_disk = false;
-    bool adaptive_rough_sampling = false;
-    bool adaptive_rough_integration = false;
-    bool adaptive_rough_cells = false;
-    bool cluster_rough_sources = false;
-    bool auto_materials = false;
-    bool ideal_only = false;
-    bool origin_reuse = true;
-    bool quiet = false;
-    std::string views_path;
-    std::string normals_path;
-    std::string normal_rad_path;
-    std::string suns_path;
-    std::string mirror_modifiers_path;
-    std::string auto_material_allowlist_path;
-    std::string proposal_modifiers_path;
-    std::string transparent_modifiers_path;
-    std::string nonspec_octree;
-    std::string reflection_octree;
-    std::string output_path;
-    std::string mirror_illuminance_output_path;
-    std::string save_normals_path;
-    std::string save_paths_path;
-    std::string oconv = "oconv";
-    std::string rcontrib;
-    std::string rtrace = "rtrace";
-    std::string octree;
-    std::vector<std::string> rcontrib_options = {
-        "-ab", "0", "-lw", "1e-7", "-st", "0",
-        "-dj", "0", "-dt", "0", "-dc", "1"
-    };
-    int nproc = 1;
-    int batch_size = 32;
-    int view_batch_size = 32;
-    int reflection_level = 5;
-    int allowlist_fallback_level = -1;
-    int reflection_seed = 0;
-    int max_specular_bounces = 1;
-    int max_transparent_hits = 4;
-    int sun_disk_samples = 1;
-    int secondary_sun_disk_samples = 0;
-    int sun_disk_pilot_samples = 16;
-    int secondary_sun_disk_pilot_samples = 4;
-    int sun_disk_seed = 0;
-    int rough_samples = 0;
-    int rough_pilot_samples = 64;
-    int rough_coarse_samples = 256;
-    int rough_medium_samples = 1024;
-    int rough_secondary_samples = 16;
-    int rough_seed = 0;
-    double threshold = 2000.0;
-    double normal_tolerance = 0.1;
-    double visible_fraction = 1.0;
-    double roughness = 0.0;
-    double rough_extent = 3.0;
-    double rough_prefilter = 0.0;
-    double rough_pilot_guard_angle = 0.0;
-    double rough_pilot_anchor_angle = 5.0;
-    double rough_convergence = 0.05;
-    double rough_illuminance_tolerance = 1.0;
-    double rough_cell_trigger = 0.5;
-    double adaptive_sun_max_angle = 1.0;
-    double adaptive_sun_min_angle = 0.1;
-    double adaptive_sun_error = 0.0;
-    double sun_disk_pilot_guard_angle = 8.0;
-    Vec3 up = {{0.0, 0.0, 1.0}};
-};
-
 double dot(const Vec3 &a, const Vec3 &b)
 {
     return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
@@ -299,13 +226,6 @@ std::vector<double> numeric_tokens(const std::string &line)
             values.push_back(value);
     }
     return values;
-}
-
-void require_file(const std::string &path, const std::string &label)
-{
-    std::ifstream input(path.c_str(), std::ios::binary);
-    if (!input)
-        throw std::runtime_error(label + " '" + path + "' cannot be opened");
 }
 
 std::vector<Viewpoint> load_views(const std::string &path)
@@ -622,393 +542,6 @@ std::vector<Sun> load_suns(const std::string &path)
         suns.push_back(sun);
     }
     return suns;
-}
-
-void validate_adaptive_sun_radiance(const std::vector<Sun> &suns)
-{
-    Vec3 reference = {{0.0, 0.0, 0.0}};
-    bool have_reference = false;
-    for (std::size_t i = 0; i < suns.size(); ++i) {
-        const Sun &sun = suns[i];
-        if (!sun.active)
-            continue;
-        if (!sun.has_radiance)
-            throw std::runtime_error(
-                "adaptive solar sampling requires a light primitive for " +
-                sun.modifier);
-        if (!(sun.radiance_scale > kEpsilon) ||
-                !std::isfinite(sun.radiance_scale))
-            throw std::runtime_error(
-                "adaptive solar sampling requires positive finite solar "
-                "radiance for " + sun.modifier);
-        Vec3 chromaticity;
-        for (int component = 0; component < 3; ++component) {
-            if (sun.radiance[component] < 0.0 ||
-                    !std::isfinite(sun.radiance[component]))
-                throw std::runtime_error(
-                    "adaptive solar sampling requires non-negative finite "
-                    "solar RGB values");
-            chromaticity[component] =
-                sun.radiance[component]/sun.radiance_scale;
-        }
-        if (!have_reference) {
-            reference = chromaticity;
-            have_reference = true;
-            continue;
-        }
-        for (int component = 0; component < 3; ++component)
-            if (std::fabs(chromaticity[component]-reference[component]) >
-                    1.0e-4)
-                throw std::runtime_error(
-                    "adaptive solar sampling requires constant solar "
-                    "chromaticity across active records");
-    }
-}
-
-struct AdaptiveSunNode {
-    std::vector<std::size_t> members;
-    std::size_t endpoint0;
-    std::size_t endpoint1;
-    std::size_t center;
-    double diameter;
-    int child0;
-    int child1;
-};
-
-struct AdaptiveSunTree {
-    std::vector<AdaptiveSunNode> nodes;
-    int root;
-};
-
-std::size_t farthest_sun(const std::vector<std::size_t> &members,
-                         std::size_t origin,
-                         const std::vector<Sun> &suns)
-{
-    std::size_t farthest = members.front();
-    double smallest_dot = 2.0;
-    for (std::size_t i = 0; i < members.size(); ++i) {
-        const double cosine = dot(suns[origin].direction,
-                                  suns[members[i]].direction);
-        if (cosine < smallest_dot) {
-            smallest_dot = cosine;
-            farthest = members[i];
-        }
-    }
-    return farthest;
-}
-
-std::size_t central_sun(const std::vector<std::size_t> &members,
-                        const std::vector<Sun> &suns)
-{
-    Vec3 mean = {{0.0, 0.0, 0.0}};
-    for (std::size_t i = 0; i < members.size(); ++i)
-        for (int component = 0; component < 3; ++component)
-            mean[component] += suns[members[i]].direction[component];
-    if (norm(mean) <= kEpsilon)
-        return members.front();
-    mean = normalized(mean, "adaptive solar cluster mean");
-    std::size_t center = members.front();
-    double largest_dot = -2.0;
-    for (std::size_t i = 0; i < members.size(); ++i) {
-        const double cosine = dot(mean, suns[members[i]].direction);
-        if (cosine > largest_dot) {
-            largest_dot = cosine;
-            center = members[i];
-        }
-    }
-    return center;
-}
-
-int build_adaptive_sun_node(const std::vector<std::size_t> &members,
-                            const std::vector<Sun> &suns,
-                            std::vector<AdaptiveSunNode> &nodes)
-{
-    AdaptiveSunNode node;
-    node.members = members;
-    node.center = central_sun(members, suns);
-    node.endpoint0 = farthest_sun(members, node.center, suns);
-    node.endpoint1 = farthest_sun(members, node.endpoint0, suns);
-    double radius = 0.0;
-    for (std::size_t i = 0; i < members.size(); ++i)
-        radius = std::max(radius, angle(suns[node.center].direction,
-                                        suns[members[i]].direction));
-    node.diameter = std::min(PI, std::max(
-        angle(suns[node.endpoint0].direction,
-              suns[node.endpoint1].direction), 2.0*radius));
-    node.child0 = node.child1 = -1;
-    const int node_index = static_cast<int>(nodes.size());
-    nodes.push_back(node);
-    if (members.size() <= 1)
-        return node_index;
-
-    std::vector<std::size_t> group0;
-    std::vector<std::size_t> group1;
-    group0.reserve((members.size()+1)/2);
-    group1.reserve(members.size()/2);
-    for (std::size_t i = 0; i < members.size(); ++i) {
-        const double cosine0 = dot(suns[members[i]].direction,
-                                   suns[node.endpoint0].direction);
-        const double cosine1 = dot(suns[members[i]].direction,
-                                   suns[node.endpoint1].direction);
-        (cosine0 >= cosine1 ? group0 : group1).push_back(members[i]);
-    }
-    if (group0.empty() || group1.empty()) {
-        group0.assign(members.begin(),
-                      members.begin()+members.size()/2);
-        group1.assign(members.begin()+members.size()/2, members.end());
-    }
-    const int child0 = build_adaptive_sun_node(group0, suns, nodes);
-    const int child1 = build_adaptive_sun_node(group1, suns, nodes);
-    nodes[node_index].child0 = child0;
-    nodes[node_index].child1 = child1;
-    return node_index;
-}
-
-AdaptiveSunTree build_adaptive_sun_tree(
-    const std::vector<std::size_t> &active_suns,
-    const std::vector<Sun> &suns)
-{
-    if (active_suns.empty())
-        throw std::runtime_error(
-            "adaptive solar sampling has no active solar records");
-    AdaptiveSunTree tree;
-    tree.nodes.reserve(2*active_suns.size());
-    tree.root = build_adaptive_sun_node(active_suns, suns, tree.nodes);
-    return tree;
-}
-
-void append_initial_sun_nodes(const AdaptiveSunTree &tree, int node_index,
-                              double maximum_angle,
-                              std::vector<int> &frontier)
-{
-    const AdaptiveSunNode &node = tree.nodes[node_index];
-    if (node.diameter <= maximum_angle || node.child0 < 0) {
-        frontier.push_back(node_index);
-        return;
-    }
-    append_initial_sun_nodes(tree, node.child0, maximum_angle, frontier);
-    append_initial_sun_nodes(tree, node.child1, maximum_angle, frontier);
-}
-
-void append_sun_probe(std::vector<std::size_t> &probes,
-                      std::size_t candidate)
-{
-    if (std::find(probes.begin(), probes.end(), candidate) == probes.end())
-        probes.push_back(candidate);
-}
-
-std::vector<std::size_t> sun_node_probes(const AdaptiveSunNode &node)
-{
-    std::vector<std::size_t> probes;
-    append_sun_probe(probes, node.endpoint0);
-    append_sun_probe(probes, node.center);
-    append_sun_probe(probes, node.endpoint1);
-    return probes;
-}
-
-double normalized_sun_response(double contrast, const Sun &sun)
-{
-    const double scale = sun.radiance_scale*sun.radiance_scale*sun.omega;
-    return scale > kEpsilon ? contrast/scale : 0.0;
-}
-
-double normalized_sun_illuminance(double illuminance, const Sun &sun)
-{
-    const double scale = sun.radiance_scale*sun.omega;
-    return scale > kEpsilon ? illuminance/scale : 0.0;
-}
-
-bool response_range_is_smooth(double minimum, double maximum,
-                              double tolerance)
-{
-    return maximum <= kEpsilon ||
-        (tolerance > 0.0 && minimum > kEpsilon &&
-         (maximum-minimum)/maximum <= tolerance);
-}
-
-bool sun_node_response_is_smooth(
-    const AdaptiveSunNode &node, const std::vector<Sun> &suns,
-    const std::vector<double> &contrast, std::size_t nsteps,
-    std::size_t first_view, std::size_t last_view,
-    const std::vector<double> *illuminance, double tolerance)
-{
-    const std::vector<std::size_t> probes = sun_node_probes(node);
-    for (std::size_t view = first_view; view < last_view; ++view) {
-        double contrast_minimum = std::numeric_limits<double>::infinity();
-        double contrast_maximum = 0.0;
-        double illuminance_minimum = std::numeric_limits<double>::infinity();
-        double illuminance_maximum = 0.0;
-        for (std::size_t i = 0; i < probes.size(); ++i) {
-            const std::size_t time = probes[i];
-            const double response = normalized_sun_response(
-                contrast[view*nsteps+time], suns[time]);
-            contrast_minimum = std::min(contrast_minimum, response);
-            contrast_maximum = std::max(contrast_maximum, response);
-            if (illuminance) {
-                const double illuminance_response =
-                    normalized_sun_illuminance(
-                        (*illuminance)[view*nsteps+time], suns[time]);
-                illuminance_minimum = std::min(
-                    illuminance_minimum, illuminance_response);
-                illuminance_maximum = std::max(
-                    illuminance_maximum, illuminance_response);
-            }
-        }
-        if (!response_range_is_smooth(
-                contrast_minimum, contrast_maximum, tolerance))
-            return false;
-        if (illuminance && !response_range_is_smooth(
-                illuminance_minimum, illuminance_maximum, tolerance))
-            return false;
-    }
-    return true;
-}
-
-void interpolate_sun_node(
-    const AdaptiveSunNode &node, const std::vector<Sun> &suns,
-    const std::vector<char> &sampled, std::size_t first_view,
-    std::size_t last_view, std::size_t nsteps,
-    std::vector<double> &contrast, std::vector<double> *illuminance)
-{
-    std::vector<std::size_t> available;
-    for (std::size_t i = 0; i < node.members.size(); ++i)
-        if (sampled[node.members[i]])
-            available.push_back(node.members[i]);
-    if (available.empty())
-        throw std::runtime_error(
-            "adaptive solar leaf has no evaluated direction");
-
-    for (std::size_t member = 0; member < node.members.size(); ++member) {
-        const std::size_t time = node.members[member];
-        if (sampled[time])
-            continue;
-        std::vector<std::pair<double, std::size_t> > nearest;
-        nearest.reserve(available.size());
-        for (std::size_t i = 0; i < available.size(); ++i)
-            nearest.push_back(std::make_pair(
-                angle(suns[time].direction,
-                      suns[available[i]].direction), available[i]));
-        const std::size_t neighbor_count = std::min<std::size_t>(3,
-                                                                 nearest.size());
-        std::partial_sort(nearest.begin(), nearest.begin()+neighbor_count,
-                          nearest.end());
-        for (std::size_t view = first_view; view < last_view; ++view) {
-            double weighted_response = 0.0;
-            double weight_sum = 0.0;
-            for (std::size_t neighbor = 0;
-                    neighbor < neighbor_count; ++neighbor) {
-                const double distance = std::max(1.0e-8,
-                                                  nearest[neighbor].first);
-                const double weight = 1.0/(distance*distance);
-                const std::size_t sample_time = nearest[neighbor].second;
-                weighted_response += weight*normalized_sun_response(
-                    contrast[view*nsteps+sample_time], suns[sample_time]);
-                weight_sum += weight;
-            }
-            contrast[view*nsteps+time] = weighted_response/weight_sum*
-                suns[time].radiance_scale*suns[time].radiance_scale*
-                suns[time].omega;
-            if (illuminance) {
-                double weighted_illuminance = 0.0;
-                for (std::size_t neighbor = 0;
-                        neighbor < neighbor_count; ++neighbor) {
-                    const double distance = std::max(
-                        1.0e-8, nearest[neighbor].first);
-                    const double weight = 1.0/(distance*distance);
-                    const std::size_t sample_time =
-                        nearest[neighbor].second;
-                    weighted_illuminance += weight*
-                        normalized_sun_illuminance(
-                            (*illuminance)[view*nsteps+sample_time],
-                            suns[sample_time]);
-                }
-                (*illuminance)[view*nsteps+time] =
-                    weighted_illuminance/weight_sum*
-                    suns[time].radiance_scale*suns[time].omega;
-            }
-        }
-    }
-}
-
-struct AdaptiveSunStats {
-    std::size_t sampled;
-    std::size_t leaves;
-    int passes;
-};
-
-AdaptiveSunStats evaluate_adaptive_suns(
-    const AdaptiveSunTree &tree, const std::vector<Sun> &suns,
-    const Options &options, std::size_t first_view,
-    std::size_t last_view, std::size_t nsteps,
-    std::vector<double> &contrast, std::vector<double> *illuminance,
-    const std::function<void(const std::vector<std::size_t> &)> &evaluate)
-{
-    const double maximum_angle = options.adaptive_sun_max_angle*PI/180.0;
-    const double minimum_angle = options.adaptive_sun_min_angle*PI/180.0;
-    std::vector<int> frontier;
-    append_initial_sun_nodes(tree, tree.root, maximum_angle, frontier);
-    std::vector<int> leaves;
-    std::vector<char> sampled(suns.size(), 0);
-    AdaptiveSunStats stats = {0, 0, 0};
-
-    while (!frontier.empty()) {
-        std::vector<std::size_t> pending;
-        for (std::size_t n = 0; n < frontier.size(); ++n) {
-            const std::vector<std::size_t> probes =
-                sun_node_probes(tree.nodes[frontier[n]]);
-            for (std::size_t p = 0; p < probes.size(); ++p)
-                if (!sampled[probes[p]]) {
-                    sampled[probes[p]] = 1;
-                    pending.push_back(probes[p]);
-                }
-        }
-        if (!pending.empty()) {
-            evaluate(pending);
-            stats.sampled += pending.size();
-        }
-        ++stats.passes;
-
-        std::vector<int> next;
-        std::vector<std::size_t> terminal_pending;
-        for (std::size_t n = 0; n < frontier.size(); ++n) {
-            const AdaptiveSunNode &node = tree.nodes[frontier[n]];
-            const bool can_refine = node.child0 >= 0 &&
-                node.members.size() > 3 && node.diameter > minimum_angle;
-            const bool smooth = sun_node_response_is_smooth(
-                node, suns, contrast, nsteps, first_view, last_view,
-                illuminance, options.adaptive_sun_error);
-            if (!smooth) {
-                if (can_refine) {
-                    next.push_back(node.child0);
-                    next.push_back(node.child1);
-                    continue;
-                }
-                for (std::size_t member = 0;
-                        member < node.members.size(); ++member) {
-                    const std::size_t time = node.members[member];
-                    if (!sampled[time]) {
-                        sampled[time] = 1;
-                        terminal_pending.push_back(time);
-                    }
-                }
-                leaves.push_back(frontier[n]);
-            } else {
-                leaves.push_back(frontier[n]);
-            }
-        }
-        if (!terminal_pending.empty()) {
-            evaluate(terminal_pending);
-            stats.sampled += terminal_pending.size();
-        }
-        frontier.swap(next);
-    }
-
-    for (std::size_t leaf = 0; leaf < leaves.size(); ++leaf)
-        interpolate_sun_node(tree.nodes[leaves[leaf]], suns, sampled,
-                             first_view, last_view, nsteps, contrast,
-                             illuminance);
-    stats.leaves = leaves.size();
-    return stats;
 }
 
 ReflectionData load_rad_normals(const std::string &path,
@@ -2503,18 +2036,6 @@ void filter_rough_work_hits(std::vector<WorkChunk> &work,
         work[batch].candidates.swap(retained[batch]);
 }
 
-void validate_rcontrib_options(const std::vector<std::string> &options)
-{
-    const char *forbidden[] = {"-f", "-h", "-V", "-m", "-M", "-n",
-                               "-c", "-x", "-y", "-lr", "-ss"};
-    for (std::size_t i = 0; i < options.size(); ++i)
-        for (std::size_t j = 0; j < sizeof(forbidden)/sizeof(forbidden[0]); ++j)
-            if (options[i] == forbidden[j] ||
-                    options[i].compare(0, std::strlen(forbidden[j]), forbidden[j]) == 0)
-                throw std::runtime_error("rcontrib option '" + options[i] +
-                    "' is managed by specularcontrast");
-}
-
 std::vector<std::string> controlled_rcontrib_options(const Options &options)
 {
     std::vector<std::string> result = options.rcontrib_options;
@@ -3102,13 +2623,13 @@ RoughPilotStats prefilter_rough_seeds(
     const Options &options, BuiltinBackendHolder *builtin_backend)
 {
     RoughPilotStats stats;
-    if (options.rough_prefilter <= 0.0)
+    if (options.rough_pilot_threshold <= 0.0)
         return stats;
 
     const bool have_baseline = !options.nonspec_octree.empty();
     const bool sparse = options.rcontrib.empty();
     const double trigger = collect_mirror_illuminance(options) ? 0.0 :
-        options.threshold*options.rough_prefilter;
+        options.threshold*options.rough_pilot_threshold;
     std::set<RoughPilotKey> retained_keys;
 
     const std::function<void(
@@ -3305,197 +2826,6 @@ RoughPilotStats prefilter_rough_seeds(
     }
     stats.retained = retained_keys.size();
     return stats;
-}
-
-struct RoughStageResult {
-    std::vector<double> contrast;
-    std::vector<double> illuminance;
-    std::size_t rays = 0;
-};
-
-RoughStageResult evaluate_rough_stage(
-    const std::vector<WorkChunk> &seed_work, int samples,
-    const std::vector<Sun> &suns, const std::vector<Viewpoint> &views,
-    const Vec3 &up, const std::set<std::string> &mirror_materials,
-    const std::set<std::string> &transparent_materials,
-    const Options &options, BuiltinBackendHolder *builtin_backend)
-{
-    RoughStageResult result;
-    result.contrast.assign(views.size()*suns.size(), 0.0);
-    result.illuminance.assign(views.size()*suns.size(), 0.0);
-
-    Options stage_options = options;
-    stage_options.adaptive_rough_integration = false;
-    stage_options.rough_samples = samples;
-    std::vector<WorkChunk> work = seed_work;
-    expand_rough_candidates(work, suns, views, up, stage_options);
-    if (!stage_options.integrated_path_check) {
-        const std::set<std::string> no_material_filter;
-        const std::set<std::string> no_transparent_filter;
-        filter_rough_work_hits(
-            work, suns, views,
-            stage_options.no_hit_check ? no_material_filter :
-                mirror_materials,
-            stage_options.no_hit_check ? no_transparent_filter :
-                transparent_materials,
-            stage_options);
-    }
-    for (std::size_t batch = 0; batch < work.size(); ++batch)
-        result.rays += work[batch].candidates.size();
-
-    if (!stage_options.rcontrib.empty()) {
-        for (std::size_t batch = 0; batch < work.size(); ++batch)
-            evaluate_external_chunk(
-                work[batch], views, stage_options, result.contrast,
-                result.illuminance, suns.size());
-        return result;
-    }
-#ifdef SPECULARCONTRIB_BUILTIN_RCONTRIB
-    const std::vector<std::vector<float> > values =
-        builtin_backend && builtin_backend->backend ?
-        trace_builtin_batches(*builtin_backend->backend, work, views,
-                              stage_options.origin_reuse) :
-        trace_builtin_batches(
-            stage_options.octree, work, views, stage_options);
-    std::vector<std::vector<float> > baseline_values;
-    BaselineSelection baseline_selection;
-    if (!stage_options.nonspec_octree.empty()) {
-        baseline_selection = select_baseline_candidates(
-            work, values, stage_options);
-        baseline_values = trace_builtin_batches(
-            stage_options.nonspec_octree, baseline_selection.work,
-            views, stage_options);
-    }
-    for (std::size_t batch = 0; batch < work.size(); ++batch) {
-        const std::vector<float> *baseline =
-            baseline_values.empty() ? NULL : &baseline_values[batch];
-        const std::vector<std::size_t> *baseline_rows =
-            baseline_values.empty() ? NULL :
-            &baseline_selection.rows[batch];
-        accumulate_sparse_chunk(
-            work[batch].candidates, values[batch], baseline, baseline_rows,
-            stage_options, views, result.contrast, result.illuminance,
-            suns.size());
-    }
-#endif
-    return result;
-}
-
-bool rough_stage_converged(double coarse_contrast, double medium_contrast,
-                           double coarse_illuminance,
-                           double medium_illuminance,
-                           bool pilot_found_glare, const Options &options)
-{
-    const double contrast_scale = std::max(
-        std::fabs(coarse_contrast), std::fabs(medium_contrast));
-    if (contrast_scale <= kEpsilon) {
-        if (pilot_found_glare)
-            return false;
-    } else if (std::min(coarse_contrast, medium_contrast) <= 0.0 ||
-               std::fabs(medium_contrast-coarse_contrast) >
-                   options.rough_convergence*contrast_scale) {
-        return false;
-    }
-
-    if (!collect_mirror_illuminance(options))
-        return true;
-    const double illuminance_difference = std::fabs(
-        medium_illuminance-coarse_illuminance);
-    const double illuminance_scale = std::max(
-        std::fabs(coarse_illuminance), std::fabs(medium_illuminance));
-    return illuminance_difference <=
-        options.rough_illuminance_tolerance ||
-        (illuminance_scale > kEpsilon && illuminance_difference <=
-         options.rough_convergence*illuminance_scale);
-}
-
-void evaluate_adaptive_rough_integration(
-    const std::vector<WorkChunk> &seed_work,
-    const RoughPilotStats &pilot, const std::vector<Sun> &suns,
-    const std::vector<Viewpoint> &views, const Vec3 &up,
-    const std::set<std::string> &mirror_materials,
-    const std::set<std::string> &transparent_materials,
-    const Options &options, BuiltinBackendHolder *builtin_backend,
-    std::vector<double> &contrast, std::vector<double> &illuminance)
-{
-    const RoughStageResult coarse = evaluate_rough_stage(
-        seed_work, options.rough_coarse_samples, suns, views, up,
-        mirror_materials, transparent_materials, options, builtin_backend);
-    const RoughStageResult medium = evaluate_rough_stage(
-        seed_work, options.rough_medium_samples, suns, views, up,
-        mirror_materials, transparent_materials, options, builtin_backend);
-
-    std::vector<char> pilot_glare(contrast.size(), 0);
-    for (std::size_t batch = 0; batch < seed_work.size(); ++batch)
-        for (std::size_t seed = 0;
-                seed < seed_work[batch].candidates.size(); ++seed) {
-            const Candidate &candidate = seed_work[batch].candidates[seed];
-            if (pilot.glare_keys.count(rough_pilot_key(candidate)))
-                pilot_glare[candidate.view_index*suns.size()+
-                            candidate.time_index] = 1;
-        }
-
-    std::vector<char> converged(contrast.size(), 0);
-    std::vector<char> visited(contrast.size(), 0);
-    std::size_t converged_outputs = 0;
-    std::size_t active_outputs = 0;
-    for (std::size_t batch = 0; batch < seed_work.size(); ++batch)
-        for (std::size_t seed = 0;
-                seed < seed_work[batch].candidates.size(); ++seed) {
-            const Candidate &candidate = seed_work[batch].candidates[seed];
-            const std::size_t output = candidate.view_index*suns.size()+
-                                       candidate.time_index;
-            if (visited[output])
-                continue;
-            visited[output] = 1;
-            ++active_outputs;
-            if (rough_stage_converged(
-                    coarse.contrast[output], medium.contrast[output],
-                    coarse.illuminance[output], medium.illuminance[output],
-                    pilot_glare[output] != 0, options)) {
-                converged[output] = 1;
-                ++converged_outputs;
-                contrast[output] += medium.contrast[output];
-                illuminance[output] += medium.illuminance[output];
-            }
-        }
-
-    std::vector<WorkChunk> unresolved(seed_work.size());
-    for (std::size_t batch = 0; batch < seed_work.size(); ++batch) {
-        unresolved[batch].suns = seed_work[batch].suns;
-        for (std::size_t seed = 0;
-                seed < seed_work[batch].candidates.size(); ++seed) {
-            const Candidate &candidate = seed_work[batch].candidates[seed];
-            const std::size_t output = candidate.view_index*suns.size()+
-                                       candidate.time_index;
-            if (!converged[output])
-                unresolved[batch].candidates.push_back(candidate);
-        }
-        unresolved[batch].generated = unresolved[batch].candidates.size();
-    }
-
-    RoughStageResult fine;
-    if (converged_outputs < active_outputs) {
-        fine = evaluate_rough_stage(
-            unresolved, options.rough_samples, suns, views, up,
-            mirror_materials, transparent_materials, options,
-            builtin_backend);
-        for (std::size_t output = 0; output < contrast.size(); ++output)
-            if (!converged[output]) {
-                contrast[output] += fine.contrast[output];
-                illuminance[output] += fine.illuminance[output];
-            }
-    }
-    if (!options.quiet)
-        std::fprintf(stderr,
-            "%s: adaptive rough integration accepted %lu/%lu outputs at "
-            "%d samples; traced %lu + %lu + %lu rays\n",
-            progname, static_cast<unsigned long>(converged_outputs),
-            static_cast<unsigned long>(active_outputs),
-            options.rough_medium_samples,
-            static_cast<unsigned long>(coarse.rays),
-            static_cast<unsigned long>(medium.rays),
-            static_cast<unsigned long>(fine.rays));
 }
 
 struct RoughRawStage {
@@ -3986,7 +3316,7 @@ void evaluate_sun_subset(
     }
     RoughPilotStats rough_pilot;
     if (options.rough_samples > 0) {
-        if (options.rough_prefilter > 0.0) {
+        if (options.rough_pilot_threshold > 0.0) {
             rough_pilot = prefilter_rough_seeds(
                 work, suns, views, up, options, builtin_backend);
             if (!options.quiet)
@@ -3998,18 +3328,11 @@ void evaluate_sun_subset(
                     static_cast<unsigned long>(rough_pilot.seeds),
                     static_cast<unsigned long>(rough_pilot.center_retained),
                     static_cast<unsigned long>(rough_pilot.probe_retained),
-                    options.rough_prefilter,
+                    options.rough_pilot_threshold,
                     static_cast<unsigned long>(rough_pilot.rays));
         }
         if (options.adaptive_rough_cells) {
             evaluate_adaptive_rough_cells(
-                work, rough_pilot, suns, views, up, mirror_materials,
-                transparent_materials, options, builtin_backend,
-                contrast, illuminance);
-            return;
-        }
-        if (options.adaptive_rough_integration) {
-            evaluate_adaptive_rough_integration(
                 work, rough_pilot, suns, views, up, mirror_materials,
                 transparent_materials, options, builtin_backend,
                 contrast, illuminance);
@@ -4331,7 +3654,6 @@ void add_matrix(std::vector<double> &target,
 void evaluate_auto_phase(
     const AutoReflectionPhase &phase, const Options &phase_options,
     const std::vector<Sun> &suns, const std::vector<std::size_t> &active_suns,
-    const AdaptiveSunTree &adaptive_sun_tree,
     const std::vector<Viewpoint> &views, const Vec3 &up,
     BuiltinBackendHolder &builtin_backend,
     std::vector<double> &contrast, std::vector<double> &illuminance)
@@ -4352,7 +3674,7 @@ void evaluate_auto_phase(
     std::vector<double> phase_illuminance(illuminance.size(), 0.0);
     const std::set<std::string> no_transparent_materials;
 
-    if (!phase_options.quiet)
+    if (!phase_options.quiet) {
         std::fprintf(stderr,
             "%s: auto phase '%s': %lu modifiers, %lu 1R proposals, "
             "%lu 2R paths%s", progname, phase.label.c_str(),
@@ -4363,6 +3685,7 @@ void evaluate_auto_phase(
                 phase.reflections.second_order_paths.size()),
             phase.rough ? " (rough-lobe quadrature)" : "");
         std::fputc('\n', stderr);
+    }
 
     for (std::size_t first_view = 0; first_view < views.size();
             first_view += static_cast<std::size_t>(
@@ -4378,16 +3701,7 @@ void evaluate_auto_phase(
                     first_view, last_view, &builtin_backend, phase_contrast,
                     phase_illuminance);
             };
-        if (phase_options.adaptive_sun_sampling && !active_suns.empty()) {
-            std::vector<double> *adaptive_illuminance =
-                collect_mirror_illuminance(phase_options) ?
-                &phase_illuminance : NULL;
-            evaluate_adaptive_suns(
-                adaptive_sun_tree, suns, phase_options, first_view, last_view,
-                suns.size(), phase_contrast, adaptive_illuminance, evaluate);
-        } else {
-            evaluate(active_suns);
-        }
+        evaluate(active_suns);
     }
     add_matrix(contrast, phase_contrast);
     add_matrix(illuminance, phase_illuminance);
@@ -4456,595 +3770,6 @@ void write_mirror_illuminance_matrix(
     if (std::fflush(output) == EOF || std::fclose(output) == EOF)
         throw std::runtime_error(
             "error writing mirror illuminance matrix");
-}
-
-void usage(FILE *stream)
-{
-    std::fprintf(stream,
-        "Usage: specularcontrast -vf views.pts [-N normals.txt | --normal-rad file.rad]\n"
-        "       -S suns.rad [-M mirror.mod] [options] scene.oct\n\n"
-        "Options:\n"
-        "  -? | --help                 show this help\n"
-        "  -h                          suppress Radiance matrix header\n"
-        "  -N file                     load mirror normals (all ordered pairs for 2R)\n"
-        "  --normal-rad file           extract normals (all ordered pairs for 2R)\n"
-        "  --max-specular-bounces n    include 1 or 2 ideal reflections (default 1)\n"
-        "  --all-normal-pairs          test all ordered pairs for 2R geometry\n"
-        "  --roughness alpha           effective Radiance roughness (enables rough mode)\n"
-        "  --rough-samples n           square Shirley-Chiu sample count (default 0=off)\n"
-        "  --adaptive-rough-sampling   center-test rough paths, then refine only retained paths\n"
-        "  --rough-pilot-samples n     rescue samples after a rejected center ray (default 64)\n"
-        "  --rough-pilot-guard-angle d refine only near hit sun directions above 16 samples\n"
-        "  --rough-pilot-anchor-angle d angular spacing of annual rescue anchors (default 5)\n"
-        "  --adaptive-rough-cells      refine only bright 16x16 rough-cap cells to final resolution\n"
-        "  --rough-coarse-samples n    first adaptive integration level (default 256)\n"
-        "  --rough-medium-samples n    accepted adaptive integration level (default 1024)\n"
-        "  --rough-convergence f       relative contrast/illuminance tolerance (default 0.05)\n"
-        "  --rough-illuminance-tolerance lux absolute illuminance tolerance (default 1)\n"
-        "  --rough-cell-trigger f      cell-refinement trigger as glare-threshold fraction (default 0.5)\n"
-        "  --rough-secondary-samples n Radiance samples at the second rough bounce (2R only; default 16)\n"
-        "  --rough-extent sigma        sampled lobe radius in standard deviations (default 3)\n"
-        "  --rough-pilot-threshold f   pilot luminance as a fraction of the glare threshold (default 1e-6)\n"
-        "  --rough-seed seed           deterministic rough-cap rotation seed (default 0)\n"
-        "  --auto-materials            classify ordinary Radiance reflectors and sample ideal/rough paths automatically\n"
-        "  --auto-material-allowlist f restrict --auto-materials to listed material identifiers\n"
-        "  --allowlist-fallback-level n re-search missing allowlisted materials at level n\n"
-        "  --ideal-only                automatically retain ideal reflectors and ignore rough materials\n"
-        "  --reflection-level level    path presearch level; increase to recover missed view paths (default 5)\n"
-        "  --reflection-seed seed      reproducible search jitter seed (default 0)\n"
-        "  --reflection-octree file    prebuilt scene containing a skyglow sky\n"
-        "  --save-normals file         save normals with view/modifier/material/primitive sources\n"
-        "  --save-reflection-paths f   save sourced ordered 2R paths and originating views\n"
-        "  -M file                     optional mirror material filter (default all)\n"
-        "  --proposal-modifiers file   material filter used only for path-tree proposals\n"
-        "  --sun-disk-samples n        square equal-solid-angle disk samples (default 1)\n"
-        "  --secondary-sun-disk-samples n samples for 2R-only paths (default: sun-disk value)\n"
-        "  --adaptive-sun-disk         pilot-test paths before full solar-disk integration\n"
-        "  --sun-disk-pilot-samples n pilot samples for direct/1R paths (default 16)\n"
-        "  --secondary-sun-disk-pilot-samples n pilot samples for 2R-only paths (default 4)\n"
-        "  --sun-disk-pilot-guard-angle d protect matching paths within d degrees (default 8)\n"
-        "  --sun-disk-seed seed        deterministic solar-disk rotation seed (default 0)\n"
-        "  --include-direct-sun        add deterministic 0R solar-disk contrast\n"
-        "  --no-hit-check              ignore -M during hit checks (2R geometry still checked)\n"
-        "  --integrated-path-check     validate paths during final Radiance tracing (default with -M)\n"
-        "  --nonspec-octree file       matching scene with target specularity set to 0\n"
-        "  --direct-specular-only      suppress direct diffuse terms (built-in backend)\n"
-        "  --no-origin-reuse           trace duplicate co-located view rays separately\n"
-        "  --mirror-illuminance-output f output 1R/2R view-plane illuminance in lux\n"
-        "  -n count                    Radiance worker count (default 1)\n"
-        "  -b count                    solar modifiers/batch (default 32)\n"
-        "  --view-batch-size count     viewpoints held per pass (default 32)\n"
-        "  -t luminance                glare threshold in cd/m^2 (default 2000)\n"
-        "  --normal-tolerance degrees  normal deduplication tolerance (default 0.1)\n"
-        "  --visible-fraction value    visible reflected solar-disk fraction\n"
-        "  -u ux uy uz                 view up vector (default 0 0 1)\n"
-        "  --oconv executable          oconv command used for reflection search\n"
-        "  --rcontrib executable       external backend (default built-in CPU)\n"
-        "  --rtrace executable         rtrace command\n"
-        "  --rcontrib-options \"...\"  rendering options\n"
-        "  -o file                     output matrix (default stdout)\n"
-        "  -q                          suppress progress messages\n\n"
-        "Rows are viewpoints; columns follow source records in suns.rad.\n");
-}
-
-std::string require_option_value(int &index, int argc, char *argv[],
-                                 const std::string &option)
-{
-    if (++index >= argc)
-        throw std::runtime_error("missing argument for " + option);
-    return argv[index];
-}
-
-Options parse_options(int argc, char *argv[])
-{
-    Options options;
-    for (int index = 1; index < argc; ++index) {
-        const std::string argument = argv[index];
-        if (argument == "-?" || argument == "--help") {
-            usage(stdout);
-            std::exit(0);
-        } else if (argument == "-h" || argument == "--no-header")
-            options.no_header = true;
-        else if (argument == "-vf" || argument == "--views")
-            options.views_path = require_option_value(index, argc, argv, argument);
-        else if (argument == "-N" || argument == "--normals")
-            options.normals_path = require_option_value(index, argc, argv, argument);
-        else if (argument == "--normal-rad")
-            options.normal_rad_path = require_option_value(index, argc, argv, argument);
-        else if (argument == "--reflection-octree")
-            options.reflection_octree = require_option_value(
-                index, argc, argv, argument);
-        else if (argument == "-S" || argument == "--suns")
-            options.suns_path = require_option_value(index, argc, argv, argument);
-        else if (argument == "-M" || argument == "--mirror-modifiers")
-            options.mirror_modifiers_path = require_option_value(index, argc, argv, argument);
-        else if (argument == "--auto-material-allowlist")
-            options.auto_material_allowlist_path = require_option_value(
-                index, argc, argv, argument);
-        else if (argument == "--proposal-modifiers")
-            options.proposal_modifiers_path = require_option_value(
-                index, argc, argv, argument);
-        else if (argument == "--sun-disk-samples")
-            options.sun_disk_samples = parse_int(
-                require_option_value(index, argc, argv, argument),
-                "solar-disk sample count");
-        else if (argument == "--secondary-sun-disk-samples")
-            options.secondary_sun_disk_samples = parse_int(
-                require_option_value(index, argc, argv, argument),
-                "secondary solar-disk sample count");
-        else if (argument == "--adaptive-sun-disk")
-            options.adaptive_sun_disk = true;
-        else if (argument == "--sun-disk-pilot-samples")
-            options.sun_disk_pilot_samples = parse_int(
-                require_option_value(index, argc, argv, argument),
-                "solar-disk pilot sample count");
-        else if (argument == "--secondary-sun-disk-pilot-samples")
-            options.secondary_sun_disk_pilot_samples = parse_int(
-                require_option_value(index, argc, argv, argument),
-                "secondary solar-disk pilot sample count");
-        else if (argument == "--sun-disk-pilot-guard-angle") {
-            const std::string value = require_option_value(
-                index, argc, argv, argument);
-            if (!parse_double(value, options.sun_disk_pilot_guard_angle))
-                throw std::runtime_error(
-                    "invalid solar-disk pilot guard angle '" + value + "'");
-        }
-        else if (argument == "--sun-disk-seed")
-            options.sun_disk_seed = parse_int(
-                require_option_value(index, argc, argv, argument),
-                "solar-disk sampling seed");
-        else if (argument == "--include-direct-sun")
-            options.include_direct_sun = true;
-        else if (argument == "--no-hit-check")
-            options.no_hit_check = true;
-        else if (argument == "--integrated-path-check")
-            options.integrated_path_check = true;
-        else if (argument == "--nonspec-octree")
-            options.nonspec_octree = require_option_value(index, argc, argv, argument);
-        else if (argument == "--direct-specular-only")
-            options.direct_specular_only = true;
-        else if (argument == "--no-origin-reuse")
-            options.origin_reuse = false;
-        else if (argument == "--mirror-illuminance-output" ||
-                 argument == "--illuminance-output")
-            options.mirror_illuminance_output_path = require_option_value(
-                index, argc, argv, argument);
-        else if (argument == "-o" || argument == "--output")
-            options.output_path = require_option_value(index, argc, argv, argument);
-        else if (argument == "--save-normals")
-            options.save_normals_path = require_option_value(index, argc, argv, argument);
-        else if (argument == "--save-reflection-paths" ||
-                 argument == "--save-paths")
-            options.save_paths_path = require_option_value(index, argc, argv, argument);
-        else if (argument == "--oconv")
-            options.oconv = require_option_value(index, argc, argv, argument);
-        else if (argument == "--rcontrib")
-            options.rcontrib = require_option_value(index, argc, argv, argument);
-        else if (argument == "--rtrace")
-            options.rtrace = require_option_value(index, argc, argv, argument);
-        else if (argument == "--rcontrib-options")
-            options.rcontrib_options = split_words(
-                require_option_value(index, argc, argv, argument));
-        else if (argument == "-n" || argument == "--nproc")
-            options.nproc = parse_int(require_option_value(index, argc, argv, argument),
-                                      "worker count");
-        else if (argument == "-b" || argument == "--batch-size")
-            options.batch_size = parse_int(
-                require_option_value(index, argc, argv, argument), "batch size");
-        else if (argument == "--view-batch-size")
-            options.view_batch_size = parse_int(
-                require_option_value(index, argc, argv, argument),
-                "view batch size");
-        else if (argument == "--reflection-level")
-            options.reflection_level = parse_int(
-                require_option_value(index, argc, argv, argument),
-                "reflection search level");
-        else if (argument == "--allowlist-fallback-level")
-            options.allowlist_fallback_level = parse_int(
-                require_option_value(index, argc, argv, argument),
-                "allowlist fallback search level");
-        else if (argument == "--reflection-seed")
-            options.reflection_seed = parse_int(
-                require_option_value(index, argc, argv, argument),
-                "reflection search seed");
-        else if (argument == "--max-specular-bounces")
-            options.max_specular_bounces = parse_int(
-                require_option_value(index, argc, argv, argument),
-                "maximum specular bounce count");
-        else if (argument == "--all-normal-pairs")
-            options.all_normal_pairs = true;
-        else if (argument == "--rough-samples")
-            options.rough_samples = parse_int(
-                require_option_value(index, argc, argv, argument),
-                "rough sample count");
-        else if (argument == "--adaptive-rough-sampling")
-            options.adaptive_rough_sampling = true;
-        else if (argument == "--adaptive-rough-cells")
-            options.adaptive_rough_cells = true;
-        else if (argument == "--rough-pilot-samples")
-            options.rough_pilot_samples = parse_int(
-                require_option_value(index, argc, argv, argument),
-                "rough pilot sample count");
-        else if (argument == "--rough-coarse-samples")
-            options.rough_coarse_samples = parse_int(
-                require_option_value(index, argc, argv, argument),
-                "rough coarse sample count");
-        else if (argument == "--rough-medium-samples")
-            options.rough_medium_samples = parse_int(
-                require_option_value(index, argc, argv, argument),
-                "rough medium sample count");
-        else if (argument == "--rough-secondary-samples")
-            options.rough_secondary_samples = parse_int(
-                require_option_value(index, argc, argv, argument),
-                "rough secondary sample count");
-        else if (argument == "--rough-seed")
-            options.rough_seed = parse_int(
-                require_option_value(index, argc, argv, argument),
-                "rough sampling seed");
-        else if (argument == "--auto-materials")
-            options.auto_materials = true;
-        else if (argument == "--ideal-only")
-            options.ideal_only = true;
-        else if (argument == "-t" || argument == "--threshold") {
-            const std::string value = require_option_value(index, argc, argv, argument);
-            if (!parse_double(value, options.threshold))
-                throw std::runtime_error("invalid luminance threshold '" + value + "'");
-        } else if (argument == "--roughness") {
-            const std::string value = require_option_value(index, argc, argv, argument);
-            if (!parse_double(value, options.roughness))
-                throw std::runtime_error("invalid roughness '" + value + "'");
-        } else if (argument == "--rough-extent") {
-            const std::string value = require_option_value(index, argc, argv, argument);
-            if (!parse_double(value, options.rough_extent))
-                throw std::runtime_error("invalid rough extent '" + value + "'");
-        } else if (argument == "--rough-pilot-threshold") {
-            const std::string value = require_option_value(index, argc, argv, argument);
-            if (!parse_double(value, options.rough_prefilter))
-                throw std::runtime_error("invalid rough prefilter '" + value + "'");
-        } else if (argument == "--rough-pilot-guard-angle") {
-            const std::string value = require_option_value(index, argc, argv, argument);
-            if (!parse_double(value, options.rough_pilot_guard_angle))
-                throw std::runtime_error(
-                    "invalid rough pilot guard angle '" + value + "'");
-        } else if (argument == "--rough-pilot-anchor-angle") {
-            const std::string value = require_option_value(index, argc, argv, argument);
-            if (!parse_double(value, options.rough_pilot_anchor_angle))
-                throw std::runtime_error(
-                    "invalid rough pilot anchor angle '" + value + "'");
-        } else if (argument == "--rough-convergence") {
-            const std::string value = require_option_value(index, argc, argv, argument);
-            if (!parse_double(value, options.rough_convergence))
-                throw std::runtime_error("invalid rough convergence '" + value + "'");
-        } else if (argument == "--rough-illuminance-tolerance") {
-            const std::string value = require_option_value(index, argc, argv, argument);
-            if (!parse_double(value, options.rough_illuminance_tolerance))
-                throw std::runtime_error(
-                    "invalid rough illuminance tolerance '" + value + "'");
-        } else if (argument == "--rough-cell-trigger") {
-            const std::string value = require_option_value(index, argc, argv, argument);
-            if (!parse_double(value, options.rough_cell_trigger))
-                throw std::runtime_error(
-                    "invalid rough cell trigger '" + value + "'");
-        } else if (argument == "--normal-tolerance") {
-            const std::string value = require_option_value(index, argc, argv, argument);
-            if (!parse_double(value, options.normal_tolerance))
-                throw std::runtime_error("invalid normal tolerance '" + value + "'");
-        } else if (argument == "--visible-fraction") {
-            const std::string value = require_option_value(index, argc, argv, argument);
-            if (!parse_double(value, options.visible_fraction))
-                throw std::runtime_error("invalid visible fraction '" + value + "'");
-        } else if (argument == "-u" || argument == "--up") {
-            for (int component = 0; component < 3; ++component) {
-                const std::string value =
-                    require_option_value(index, argc, argv, argument);
-                if (!parse_double(value, options.up[component]))
-                    throw std::runtime_error("invalid view up component '" + value + "'");
-            }
-        } else if (argument == "-q" || argument == "--quiet")
-            options.quiet = true;
-        else if (!argument.empty() && argument[0] == '-')
-            throw std::runtime_error("unknown option '" + argument + "'");
-        else if (!options.octree.empty())
-            throw std::runtime_error("unexpected extra argument '" + argument + "'");
-        else
-            options.octree = argument;
-    }
-    if (options.ideal_only)
-        options.auto_materials = true;
-    if (options.auto_materials) {
-        options.integrated_path_check = true;
-        options.direct_specular_only = true;
-        options.cluster_rough_sources = !options.ideal_only;
-        if (!options.ideal_only && options.rough_samples == 0)
-            options.rough_samples = 4096;
-    } else if (!options.separate_path_prefilter && options.rcontrib.empty() &&
-            !options.mirror_modifiers_path.empty())
-        options.integrated_path_check = true;
-    if (options.adaptive_rough_integration || options.adaptive_rough_cells)
-        options.adaptive_rough_sampling = true;
-    if (options.adaptive_rough_sampling && options.rough_prefilter <= 0.0)
-        options.rough_prefilter = 1.0e-6;
-    return options;
-}
-
-void validate_options(const Options &options)
-{
-    if (options.views_path.empty() || options.suns_path.empty() ||
-            options.octree.empty())
-        throw std::runtime_error("-vf, -S, and the scene octree are required");
-    if (!options.normals_path.empty() && !options.normal_rad_path.empty())
-        throw std::runtime_error("-N and --normal-rad are mutually exclusive");
-    if (options.nproc < 1 || options.batch_size < 1 ||
-            options.view_batch_size < 1)
-        throw std::runtime_error(
-            "worker, solar-batch, and view-batch counts must be positive");
-    if (options.reflection_level < 0 || options.reflection_level > 10)
-        throw std::runtime_error("reflection search level must lie in [0, 10]");
-    if (options.allowlist_fallback_level < -1 ||
-            options.allowlist_fallback_level > 10)
-        throw std::runtime_error(
-            "allowlist fallback search level must lie in [0, 10]");
-    if (options.allowlist_fallback_level >= 0 &&
-            options.allowlist_fallback_level <= options.reflection_level)
-        throw std::runtime_error(
-            "allowlist fallback search level must exceed --reflection-level");
-    if (options.max_specular_bounces < 1 ||
-            options.max_specular_bounces > 2)
-        throw std::runtime_error(
-            "maximum specular bounce count must be 1 or 2");
-    if (options.all_normal_pairs && options.max_specular_bounces < 2)
-        throw std::runtime_error(
-            "--all-normal-pairs requires --max-specular-bounces 2");
-    if (options.max_transparent_hits < 1 || options.max_transparent_hits > 64)
-        throw std::runtime_error(
-            "maximum transparent hit count must lie in [1, 64]");
-    if (options.sun_disk_samples < 1)
-        throw std::runtime_error("solar-disk sample count must be positive");
-    {
-        const int side = static_cast<int>(std::sqrt(
-            static_cast<double>(options.sun_disk_samples)));
-        if (side*side != options.sun_disk_samples)
-            throw std::runtime_error(
-                "solar-disk sample count must be a perfect square "
-                "(e.g. 4, 16, or 64)");
-    }
-    if (options.secondary_sun_disk_samples < 0)
-        throw std::runtime_error(
-            "secondary solar-disk sample count cannot be negative");
-    if (options.secondary_sun_disk_samples > 0) {
-        const int side = static_cast<int>(std::sqrt(
-            static_cast<double>(options.secondary_sun_disk_samples)));
-        if (side*side != options.secondary_sun_disk_samples)
-            throw std::runtime_error(
-                "secondary solar-disk sample count must be a perfect square");
-    }
-    if (options.sun_disk_pilot_samples < 1 ||
-            options.secondary_sun_disk_pilot_samples < 1)
-        throw std::runtime_error(
-            "solar-disk pilot sample counts must be positive");
-    {
-        const int primary_side = static_cast<int>(std::sqrt(
-            static_cast<double>(options.sun_disk_pilot_samples)));
-        const int secondary_side = static_cast<int>(std::sqrt(
-            static_cast<double>(options.secondary_sun_disk_pilot_samples)));
-        if (primary_side*primary_side != options.sun_disk_pilot_samples ||
-                secondary_side*secondary_side !=
-                options.secondary_sun_disk_pilot_samples)
-            throw std::runtime_error(
-                "solar-disk pilot sample counts must be perfect squares");
-    }
-    if (options.adaptive_sun_disk) {
-        const int secondary_samples =
-            options.secondary_sun_disk_samples > 0 ?
-            options.secondary_sun_disk_samples : options.sun_disk_samples;
-        if (options.sun_disk_samples <= 1 ||
-                options.sun_disk_pilot_samples > options.sun_disk_samples ||
-                options.secondary_sun_disk_pilot_samples >
-                secondary_samples)
-            throw std::runtime_error(
-                "adaptive solar-disk pilot counts must not exceed the full "
-                "sample counts");
-        if (!options.rcontrib.empty() || !options.integrated_path_check)
-            throw std::runtime_error(
-                "--adaptive-sun-disk requires the built-in backend and "
-                "integrated path checking with -M");
-    }
-    if (!(options.sun_disk_pilot_guard_angle >= 0.0 &&
-            options.sun_disk_pilot_guard_angle < 180.0))
-        throw std::runtime_error(
-            "solar-disk pilot guard angle must lie in [0, 180) degrees");
-    if (!(options.adaptive_sun_max_angle > 0.0 &&
-            options.adaptive_sun_max_angle < 180.0))
-        throw std::runtime_error(
-            "adaptive solar maximum angle must lie in (0, 180) degrees");
-    if (!(options.adaptive_sun_min_angle > 0.0 &&
-            options.adaptive_sun_min_angle <=
-            options.adaptive_sun_max_angle))
-        throw std::runtime_error(
-            "adaptive solar minimum angle must be positive and no larger "
-            "than the maximum angle");
-    if (!(options.adaptive_sun_error >= 0.0 &&
-            options.adaptive_sun_error <= 1.0))
-        throw std::runtime_error(
-            "adaptive solar response error must lie in [0, 1]");
-    if (options.rough_samples < 0)
-        throw std::runtime_error("rough sample count cannot be negative");
-    if (options.rough_pilot_samples < 1)
-        throw std::runtime_error("rough pilot sample count must be positive");
-    if (options.rough_secondary_samples < 1)
-        throw std::runtime_error(
-            "rough secondary sample count must be positive");
-    if (options.rough_samples > 0) {
-        const int side = static_cast<int>(std::sqrt(
-            static_cast<double>(options.rough_samples)));
-        if (side*side != options.rough_samples)
-            throw std::runtime_error(
-                "rough sample count must be a perfect square (e.g. 16 or 64)");
-        const int pilot_side = static_cast<int>(std::sqrt(
-            static_cast<double>(options.rough_pilot_samples)));
-        if (pilot_side*pilot_side != options.rough_pilot_samples ||
-                options.rough_pilot_samples > options.rough_samples)
-            throw std::runtime_error(
-                "rough pilot sample count must be a perfect square no "
-                "larger than the full rough sample count");
-        if (options.adaptive_rough_integration) {
-            const int coarse_side = static_cast<int>(std::sqrt(
-                static_cast<double>(options.rough_coarse_samples)));
-            const int medium_side = static_cast<int>(std::sqrt(
-                static_cast<double>(options.rough_medium_samples)));
-            if (coarse_side*coarse_side != options.rough_coarse_samples ||
-                    medium_side*medium_side != options.rough_medium_samples ||
-                    options.rough_coarse_samples >=
-                        options.rough_medium_samples ||
-                    options.rough_medium_samples > options.rough_samples)
-                throw std::runtime_error(
-                    "adaptive rough integration levels must be increasing "
-                    "perfect squares no larger than --rough-samples");
-        }
-        if (options.adaptive_rough_cells) {
-            const int medium_side = static_cast<int>(std::sqrt(
-                static_cast<double>(options.rough_medium_samples)));
-            if (medium_side*medium_side != options.rough_medium_samples ||
-                    options.rough_medium_samples >= options.rough_samples ||
-                    side%medium_side)
-                throw std::runtime_error(
-                    "adaptive rough-cell sampling requires a perfect-square "
-                    "--rough-medium-samples grid that evenly divides the "
-                    "final grid");
-        }
-        if (!options.auto_materials &&
-                !(options.roughness > 0.0 && options.roughness <= 1.0))
-            throw std::runtime_error(
-                "roughness must lie in (0, 1] when rough sampling is enabled");
-    } else if (!options.auto_materials && options.roughness != 0.0) {
-        throw std::runtime_error(
-            "--roughness requires a positive --rough-samples value");
-    }
-    if (options.cluster_rough_sources && options.rough_samples <= 0)
-        throw std::runtime_error(
-            "--cluster-rough-sources requires rough sampling to be enabled");
-    if (!(options.rough_convergence > 0.0 &&
-            options.rough_convergence <= 1.0))
-        throw std::runtime_error(
-            "rough convergence tolerance must lie in (0, 1]");
-    if (options.rough_illuminance_tolerance < 0.0)
-        throw std::runtime_error(
-            "rough illuminance tolerance cannot be negative");
-    if (!(options.rough_cell_trigger > 0.0 &&
-            options.rough_cell_trigger <= 1.0))
-        throw std::runtime_error(
-            "rough cell trigger must lie in (0, 1]");
-    if (options.adaptive_rough_cells &&
-            options.adaptive_rough_integration)
-        throw std::runtime_error(
-            "adaptive rough-cell and staged integration modes are mutually "
-            "exclusive");
-    if (options.adaptive_rough_cells &&
-            (!options.rcontrib.empty() || !options.nonspec_octree.empty()))
-        throw std::runtime_error(
-            "adaptive rough-cell integration requires the built-in backend "
-            "without --nonspec-octree");
-    if (options.rough_pilot_guard_angle < 0.0 ||
-            options.rough_pilot_guard_angle >= 180.0)
-        throw std::runtime_error(
-            "rough pilot guard angle must lie in [0, 180) degrees");
-    if (!(options.rough_pilot_anchor_angle > 0.0 &&
-            options.rough_pilot_anchor_angle < 180.0))
-        throw std::runtime_error(
-            "rough pilot anchor angle must lie in (0, 180) degrees");
-    if (!options.auto_materials && options.sun_disk_samples > 1 &&
-            options.rough_samples > 0)
-        throw std::runtime_error(
-            "solar-disk and rough-lobe sampling cannot be enabled together");
-    if (!options.auto_materials && options.include_direct_sun &&
-            options.rough_samples > 0)
-        throw std::runtime_error(
-            "direct-sun and rough-lobe sampling cannot be enabled together");
-    if (options.direct_specular_only && !options.nonspec_octree.empty())
-        throw std::runtime_error(
-            "--direct-specular-only and --nonspec-octree are mutually exclusive");
-    if (options.direct_specular_only && !options.rcontrib.empty())
-        throw std::runtime_error(
-            "--direct-specular-only requires the built-in rcontrib backend");
-    if (!options.output_path.empty() &&
-            options.output_path == options.mirror_illuminance_output_path)
-        throw std::runtime_error(
-            "contrast and mirror illuminance outputs must use different files");
-    if (options.integrated_path_check && options.separate_path_prefilter)
-        throw std::runtime_error(
-            "--integrated-path-check and --separate-path-prefilter are mutually exclusive");
-    if (options.integrated_path_check &&
-            ((!options.auto_materials && options.mirror_modifiers_path.empty()) ||
-             !options.rcontrib.empty()))
-        throw std::runtime_error(
-            "--integrated-path-check requires -M (or --auto-materials) and the built-in backend");
-    if (options.auto_materials && !options.mirror_modifiers_path.empty())
-        throw std::runtime_error(
-            "--auto-materials and -M are mutually exclusive");
-    if (!options.auto_material_allowlist_path.empty() &&
-            !options.auto_materials)
-        throw std::runtime_error(
-            "--auto-material-allowlist requires --auto-materials");
-    if (options.allowlist_fallback_level >= 0 &&
-            options.auto_material_allowlist_path.empty())
-        throw std::runtime_error(
-            "--allowlist-fallback-level requires --auto-material-allowlist");
-    if (options.auto_materials && (!options.normals_path.empty() ||
-            !options.normal_rad_path.empty() || options.all_normal_pairs))
-        throw std::runtime_error(
-            "--auto-materials requires automatic path-tree discovery");
-    if (options.auto_materials && !options.proposal_modifiers_path.empty())
-        throw std::runtime_error(
-            "--auto-materials determines proposal modifiers from the octree");
-    if (options.auto_materials && !options.nonspec_octree.empty())
-        throw std::runtime_error(
-            "--auto-materials uses direct specular path filtering and does not accept --nonspec-octree");
-    if (options.auto_materials && options.roughness != 0.0)
-        throw std::runtime_error(
-            "--roughness is determined from each material in --auto-materials mode");
-    if (options.ideal_only && options.rough_samples != 0)
-        throw std::runtime_error(
-            "--ideal-only does not accept rough-lobe sampling options");
-    if (!(options.rough_extent > 0.0 && options.rough_extent <= 10.0))
-        throw std::runtime_error("rough extent must lie in (0, 10]");
-    if (options.rough_prefilter < 0.0 || options.rough_prefilter > 1.0)
-        throw std::runtime_error("rough prefilter must lie in [0, 1]");
-    if (options.rough_prefilter > 0.0 && options.rough_samples <= 0)
-        throw std::runtime_error(
-            "adaptive rough sampling requires rough sampling to be enabled");
-    if (options.visible_fraction < 0.0 || options.visible_fraction > 1.0)
-        throw std::runtime_error("visible fraction must lie between 0 and 1");
-    if (options.normal_tolerance < 0.0 || options.normal_tolerance >= 90.0)
-        throw std::runtime_error("normal tolerance must lie in [0, 90) degrees");
-    require_file(options.views_path, "viewpoint file");
-    require_file(options.suns_path, "suns file");
-    require_file(options.octree, "octree");
-    if (!options.normals_path.empty())
-        require_file(options.normals_path, "normal file");
-    if (!options.normal_rad_path.empty())
-        require_file(options.normal_rad_path, "normal geometry file");
-    if (!options.reflection_octree.empty())
-        require_file(options.reflection_octree, "reflection-search octree");
-    if (!options.mirror_modifiers_path.empty())
-        require_file(options.mirror_modifiers_path, "mirror modifier file");
-    if (!options.auto_material_allowlist_path.empty())
-        require_file(options.auto_material_allowlist_path,
-                     "automatic material allowlist file");
-    if (!options.proposal_modifiers_path.empty())
-        require_file(options.proposal_modifiers_path,
-                     "path-tree proposal modifier file");
-    if (!options.integrated_path_check &&
-            !options.transparent_modifiers_path.empty())
-        require_file(options.transparent_modifiers_path,
-                     "transparent modifier file");
-    if (!options.nonspec_octree.empty())
-        require_file(options.nonspec_octree, "non-specular octree");
-#ifndef SPECULARCONTRIB_BUILTIN_RCONTRIB
-    if (options.rcontrib.empty())
-        throw std::runtime_error(
-            "this build has no built-in rcontrib; specify --rcontrib");
-#endif
-    validate_rcontrib_options(options.rcontrib_options);
 }
 
 } // namespace
@@ -5198,16 +3923,11 @@ int main(int argc, char *argv[])
         for (std::size_t time = 0; time < suns.size(); ++time)
             if (suns[time].active)
                 active_suns.push_back(time);
-        AdaptiveSunTree adaptive_sun_tree;
-        adaptive_sun_tree.root = -1;
-        if (options.adaptive_sun_sampling && !active_suns.empty()) {
-            validate_adaptive_sun_radiance(suns);
-            adaptive_sun_tree = build_adaptive_sun_tree(active_suns, suns);
-        }
 #ifdef SPECULARCONTRIB_BUILTIN_RCONTRIB
         if (!builtin_backend.backend && options.rcontrib.empty() &&
                 options.nonspec_octree.empty() &&
-                options.rough_prefilter <= 0.0 && have_trace_candidates)
+                options.rough_pilot_threshold <= 0.0 &&
+                have_trace_candidates)
             builtin_backend.backend = create_builtin_backend(
                 options.octree, options, mirror_materials);
 #endif
@@ -5368,14 +4088,6 @@ int main(int argc, char *argv[])
                     "%s: validating actual reflected child-ray branches; "
                     "Radiance handles transmission automatically\n",
                     progname);
-            if (options.adaptive_sun_sampling)
-                std::fprintf(stderr,
-                    "%s: adaptive solar sampling, %.4g degree maximum "
-                    "diameter, %.4g degree minimum diameter, %.4g response "
-                    "error\n", progname,
-                    options.adaptive_sun_max_angle,
-                    options.adaptive_sun_min_angle,
-                    options.adaptive_sun_error);
             if (options.rough_samples > 0 && !options.auto_materials) {
                 std::fprintf(stderr,
                     "%s: rough mode alpha=%.6g, %d equal-solid-angle samples, "
@@ -5396,7 +4108,7 @@ int main(int argc, char *argv[])
             for (std::size_t phase = 0; phase < phases.size(); ++phase)
                 evaluate_auto_phase(
                     phases[phase], auto_phase_options(options, phases[phase]),
-                    suns, active_suns, adaptive_sun_tree, views, up,
+                    suns, active_suns, views, up,
                     builtin_backend, contrast, mirror_illuminance);
 #endif
         } else for (std::size_t first_view = 0;
@@ -5421,27 +4133,7 @@ int main(int argc, char *argv[])
                         first_view, last_view, &builtin_backend, contrast,
                         mirror_illuminance);
                 };
-            if (options.adaptive_sun_sampling && !active_suns.empty()) {
-                std::vector<double> *adaptive_illuminance =
-                    collect_mirror_illuminance(options) ?
-                    &mirror_illuminance : NULL;
-                const AdaptiveSunStats stats = evaluate_adaptive_suns(
-                    adaptive_sun_tree, suns, options, first_view, last_view,
-                    suns.size(), contrast, adaptive_illuminance, evaluate);
-                if (!options.quiet)
-                    std::fprintf(stderr,
-                        "%s: viewpoints %lu-%lu sampled %lu/%lu active "
-                        "solar directions in %d passes (%lu final clusters)\n",
-                        progname,
-                        static_cast<unsigned long>(first_view+1),
-                        static_cast<unsigned long>(last_view),
-                        static_cast<unsigned long>(stats.sampled),
-                        static_cast<unsigned long>(active_suns.size()),
-                        stats.passes,
-                        static_cast<unsigned long>(stats.leaves));
-            } else {
-                evaluate(active_suns);
-            }
+            evaluate(active_suns);
         }
         write_matrix(options, contrast, views.size(), suns.size(), argc, argv);
         write_mirror_illuminance_matrix(
